@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Credifácil
 
-## Getting Started
+Sitio web para comparar y promover créditos de diversas instituciones financieras de
+Costa Rica (bancos, cooperativas y mutuales). Incluye simulador de crédito, páginas por
+tipo de producto y captura de solicitudes.
 
-First, run the development server:
+Construido con **Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS v4**.
+
+## Cómo correr el proyecto
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # desarrollo en http://localhost:3000
+npm run build      # build de producción
+npm run start      # servir el build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estructura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+  app/
+    page.tsx                 # Home
+    simulador/               # Simulador dedicado
+    creditos/[slug]/         # Página por producto (hipotecario, personal, vehiculo, pyme)
+    instituciones/           # Instituciones aliadas
+    como-funciona/           # Explicación del proceso
+    contacto/                # Formulario de solicitud
+    layout.tsx globals.css   # Layout global, fuentes y design tokens
+  components/
+    layout/    Header, Footer
+    home/      Secciones de la Home (Hero, ProductGrid, HowItWorks, ...)
+    simulator/ CreditSimulator (componente interactivo)
+    forms/     ContactForm (maquetado)
+    ui/        Button, Logo, Accordion, SectionHeading, Reveal, InstitutionLogo
+  lib/
+    products.ts       # Datos de los 4 tipos de crédito (copy, rangos, tasa de ejemplo)
+    institutions.ts   # Instituciones de Costa Rica (con logo placeholder)
+    simulator.ts      # Cálculo de cuota (amortización francesa) y formato de colones
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Identidad visual
 
-## Learn More
+- **Primario:** azul `#1e4dd8` · **Acento:** verde/teal `#10b981`
+- Tipografías: **Plus Jakarta Sans** (títulos) + **Inter** (cuerpo)
+- Tokens definidos en `src/app/globals.css` (`@theme`)
 
-To learn more about Next.js, take a look at the following resources:
+## ⚠️ Pendientes antes de producción (placeholders)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Esta primera entrega es de **diseño y estructura**. Falta conectar/verificar:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Formularios sin backend:** `ContactForm` solo muestra un estado de éxito; no envía
+   datos. Conectar a WhatsApp/email o base de datos (ej. Supabase, o un endpoint propio).
+2. **Logos de instituciones:** son monogramas placeholder (`InstitutionLogo`). Reemplazar
+   por logos oficiales y confirmar permisos de uso de marca.
+3. **Tasas y montos:** las tasas de `products.ts` (`exampleRate`) son **ejemplos**, no ofertas
+   reales. Verificar con cada institución antes de publicar cifras.
+4. **Número de WhatsApp y datos de contacto:** actualmente `+506 0000 0000` y
+   `hola@credifacil.cr` (placeholders) en Header, Footer, Contacto y CTAs.
+5. **Logo de marca:** `src/components/ui/Logo.tsx` es un logo generado; sustituir por el
+   oficial cuando exista.
+6. **Dominio y metadata:** `siteUrl` en `layout.tsx` apunta a `https://credifacil.cr`.
 
-## Deploy on Vercel
+## Aviso legal
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los montos, cuotas y tasas mostrados son ilustrativos y no constituyen una oferta de
+crédito. Toda solicitud queda sujeta a aprobación de la institución financiera.
