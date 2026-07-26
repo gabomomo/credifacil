@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import heroImg from "@/assets/hero.png";
 import { ShieldCheck, Clock, HandCoins } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { CreditSimulator } from "@/components/simulator/CreditSimulator";
@@ -17,10 +18,11 @@ export function Hero() {
       {/* Imagen de fondo + velo para legibilidad */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/hero.png"
+          src={heroImg}
           alt=""
           fill
           priority
+          placeholder="blur"
           sizes="100vw"
           className="object-cover object-center"
         />
