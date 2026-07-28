@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MessageCircle, Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { products } from "@/lib/products";
+import { site } from "@/lib/site";
 
 export function Footer() {
   return (
@@ -14,7 +15,7 @@ export function Footer() {
             para que elijas la mejor opción y te acompañamos gratis en todo el proceso.
           </p>
           <a
-            href="https://wa.me/50600000000"
+            href={site.phone.whatsapp}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600"
@@ -61,15 +62,15 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm">
             <li className="flex items-center gap-3">
               <Phone className="size-4 shrink-0 text-accent-400" />
-              <span className="text-slate-400">+506 0000 0000</span>
+              <span className="text-slate-400">{site.phone.display}</span>
             </li>
             <li className="flex items-center gap-3">
               <Mail className="size-4 shrink-0 text-accent-400" />
-              <span className="text-slate-400">hola@credifacil.cr</span>
+              <span className="text-slate-400">{site.email.address}</span>
             </li>
             <li className="flex items-center gap-3">
               <MapPin className="size-4 shrink-0 text-accent-400" />
-              <span className="text-slate-400">San José, Costa Rica</span>
+              <span className="text-slate-400">{site.location}</span>
             </li>
           </ul>
         </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MessageCircle, Phone, Mail, Clock } from "lucide-react";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { AdvisorScene } from "@/components/illustrations/Scenes";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contacto y solicitud",
@@ -10,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 const channels = [
-  { icon: MessageCircle, label: "WhatsApp", value: "+506 0000 0000", href: "https://wa.me/50600000000" },
-  { icon: Phone, label: "Teléfono", value: "+506 0000 0000", href: "tel:+50600000000" },
-  { icon: Mail, label: "Correo", value: "hola@credifacil.cr", href: "mailto:hola@credifacil.cr" },
+  { icon: MessageCircle, label: "WhatsApp", value: site.phone.display, href: site.phone.whatsapp },
+  { icon: Phone, label: "Teléfono", value: site.phone.display, href: site.phone.tel },
+  { icon: Mail, label: "Correo", value: site.email.address, href: site.email.mailto },
 ];
 
 export default function ContactoPage() {
@@ -61,7 +62,7 @@ export default function ContactoPage() {
 
             <div className="mt-6 flex items-center gap-3 rounded-2xl bg-mist p-4 text-sm text-ink-soft">
               <Clock className="size-5 shrink-0 text-brand-600" />
-              Lunes a viernes de 8:00 a. m. a 6:00 p. m. · Sábados de 9:00 a. m. a 1:00 p. m.
+              {site.hours}
             </div>
           </div>
 

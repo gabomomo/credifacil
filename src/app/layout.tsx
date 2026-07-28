@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans, Caveat } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { site } from "@/lib/site";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,7 +25,7 @@ const caveat = Caveat({
   display: "swap",
 });
 
-const siteUrl = "https://credifacil.cr";
+const siteUrl = site.url;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

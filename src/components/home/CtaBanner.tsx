@@ -1,6 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Sparkle, Star4, HandNote } from "@/components/ui/Doodles";
+import { site } from "@/lib/site";
 
 export function CtaBanner() {
   return (
@@ -36,7 +37,7 @@ export function CtaBanner() {
                 Simular mi crédito
               </ButtonLink>
               <a
-                href="https://wa.me/50600000000"
+                href={site.phone.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/40 px-7 py-3.5 font-semibold text-white transition-colors hover:bg-white/10"

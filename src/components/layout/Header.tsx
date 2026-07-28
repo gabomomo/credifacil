@@ -7,6 +7,7 @@ import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 import { products } from "@/lib/products";
 import { cn } from "@/lib/cn";
+import { site } from "@/lib/site";
 
 const nav = [
   { label: "Créditos", href: "/#productos" },
@@ -62,7 +63,7 @@ export function Header() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <a
-            href="https://wa.me/50600000000"
+            href={site.phone.whatsapp}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-[0.95rem] font-semibold text-accent-600 hover:text-accent-700"
