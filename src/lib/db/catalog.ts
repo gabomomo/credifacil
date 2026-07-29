@@ -22,6 +22,7 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import type { Institution, Offer } from "@/lib/db/types";
+import type { Institution as CodeInstitution } from "@/lib/institutions";
 
 const INSTITUTIONS = "institutions";
 const OFFERS = "offers";
@@ -141,4 +142,88 @@ export async function loadCatalog(): Promise<{
 }> {
   const [institutions, offers] = await Promise.all([listInstitutions(), listOffers()]);
   return { institutions, offers };
+}
+
+// ---------- Importación inicial ----------
+
+const KIND_BY_TYPE: Record<CodeInstitution["type"], Institution["kind"]> = {
+  Banco: "banco",
+  Cooperativa: "cooperativa",
+  Mutual: "mutual",
+  Financiera: "financiera",
+};
+
+/**
+ * Vuelca las instituciones que ya están en `src/lib/institutions.ts` a Firestore,
+ * para no teclear trece fichas a mano.
+ *
+ * Dos decisiones importantes:
+ *
+ * 1. Los ids de documento son la `key` del código y `<key>_<producto>`, así que
+ *    reimportar ACTUALIZA en vez de duplicar. Se puede correr sin miedo.
+ *
+ * 2. Las ofertas se crean **inactivas** y con `verifiedAt` en el epoch. Los
+ *    nombres y tipos de institución son hechos; las tasas NO: las de
+ *    `products.ts` son de ejemplo. Importarlas activas metería cifras
+ *    inventadas en el ponderado, que es justo lo que no debe pasar. Quedan como
+ *    borradores: hay que poner la tasa real y activarlas una por una.
+ */
+export async function seedFromCode(): Promise<{ institutions: number; offers: number }> {
+  const db = getDb();
+  if (!db) return { institutions: 0, offers: 0 };
+
+  const [{ institutions: source }, { products }] = await Promise.all([
+    import("@/lib/institutions"),
+    import("@/lib/products"),
+  ]);
+
+  let offerCount = 0;
+
+  await Promise.all(
+    source.map(async (i, index) => {
+      await setDoc(
+        doc(db, INSTITUTIONS, i.key),
+        {
+          name: i.name,
+          shortName: i.monogram,
+          kind: KIND_BY_TYPE[i.type],
+          active: true,
+          weight: 1,
+          order: index,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      await Promise.all(
+        i.products.map(async (slug) => {
+          const p = products.find((x) => x.slug === slug);
+          if (!p) return;
+          offerCount++;
+          await setDoc(
+            doc(db, OFFERS, `${i.key}_${slug}`),
+            {
+              institutionId: i.key,
+              product: slug,
+              annualRate: p.exampleRate,
+              minAmount: p.amount.min,
+              maxAmount: p.amount.max,
+              minMonths: p.term.min,
+              maxMonths: p.term.max,
+              minIncome: "r1",
+              acceptedEmployment: ["publico", "privado", "independiente"],
+              // Inactiva y sin verificar: no entra al ponderado hasta que
+              // alguien confirme la tasa con la institución.
+              active: false,
+              verifiedAt: Timestamp.fromDate(new Date(0)),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }),
+      );
+    }),
+  );
+
+  return { institutions: source.length, offers: offerCount };
 }

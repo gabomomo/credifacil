@@ -85,9 +85,22 @@ cp env.example .env.local     # y pegá ahí los valores del paso 4
 npm run dev
 ```
 
-Para que el sitio publicado también los tenga, hay que agregarlos como *secrets* del
-repositorio en GitHub (**Settings → Secrets and variables → Actions**) y pasarlos al paso
-de build en `.github/workflows/deploy.yml`.
+Para el sitio **publicado** hay que crear los mismos seis valores como *secrets* del
+repositorio: **Settings → Secrets and variables → Actions → New repository secret**, con
+exactamente estos nombres:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY               NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_PROJECT_ID            NEXT_PUBLIC_FIREBASE_APP_ID
+```
+
+El workflow ya los consume. Se incrustan **al compilar**, así que después de crearlos hay
+que volver a desplegar (un push a `main`, o **Actions → Deploy to GitHub Pages → Run
+workflow**). Si no existen, el build no falla: el sitio sigue con tasas de ejemplo.
+
+⚠️ En **Authentication → Settings → Dominios autorizados** agregá `gabomomo.github.io`, o
+el login con Google fallará en el sitio publicado (en `localhost` funciona por defecto).
 
 ### 3. Publicar las reglas de seguridad
 
@@ -112,6 +125,19 @@ Las reglas exigen ser `owner` para otorgar accesos, así que el primer registro 
    - Campos: `email` (string, tu correo), `role` (string, `owner`),
      `createdAt` (timestamp, ahora)
 3. Recargá `/admin`. Desde ahí ya podés dar acceso a otras personas.
+
+### 5. Cargar las instituciones
+
+En **Instituciones y tasas** aparece el botón **Importar las 13 del código**: vuelca a
+Firestore las instituciones de `src/lib/institutions.ts` con sus tipos y los productos que
+ofrece cada una. Es idempotente (usa la `key` como id), así que se puede repetir.
+
+Las tasas se crean **inactivas y sin fecha de verificación**, a propósito: los nombres y
+tipos son hechos, pero las tasas de `products.ts` son de ejemplo. Importarlas activas
+metería cifras inventadas en el ponderado. Hay que confirmar cada tasa con la institución,
+poner la fecha de verificación y activarla.
+
+Mientras todas estén inactivas, el simulador sigue mostrando *"Tasa de ejemplo"*.
 
 ### Modelo de datos
 

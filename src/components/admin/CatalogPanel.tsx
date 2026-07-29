@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, RefreshCw, AlertTriangle, Download } from "lucide-react";
 import {
   listInstitutions,
   listOffers,
@@ -91,6 +91,27 @@ export function CatalogPanel({ editable }: { editable: boolean }) {
     setReloadKey((k) => k + 1);
   }, []);
 
+  const [seeding, setSeeding] = useState(false);
+
+  async function runSeed() {
+    setSeeding(true);
+    try {
+      const { seedFromCode } = await import("@/lib/db/catalog");
+      const r = await seedFromCode();
+      setError(null);
+      load();
+      alert(
+        `Importadas ${r.institutions} instituciones y ${r.offers} tasas en borrador.\n\n` +
+          "Las tasas están inactivas: confirmá cada una con la institución, " +
+          "poné la fecha de verificación y activala.",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo importar");
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   async function persistInstitution() {
     if (!editingInst) return;
     try {
@@ -151,9 +172,24 @@ export function CatalogPanel({ editable }: { editable: boolean }) {
         </div>
 
         {institutions.length === 0 ? (
-          <p className="mt-6 text-center text-ink-soft">
-            No hay instituciones. El simulador seguirá usando las tasas de ejemplo.
-          </p>
+          <div className="mt-6 rounded-2xl bg-mist p-6 text-center">
+            <p className="text-ink-soft">
+              No hay instituciones. El simulador seguirá usando las tasas de ejemplo.
+            </p>
+            {editable && (
+              <>
+                <Button className="mt-4" onClick={runSeed} disabled={seeding}>
+                  <Download className="size-4" />
+                  {seeding ? "Importando…" : "Importar las 13 del código"}
+                </Button>
+                <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed text-slate-500">
+                  Trae los nombres y tipos de <code>institutions.ts</code>. Las tasas se
+                  crean <strong>inactivas y sin verificar</strong>: hay que confirmarlas
+                  con cada institución y activarlas una por una.
+                </p>
+              </>
+            )}
+          </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
