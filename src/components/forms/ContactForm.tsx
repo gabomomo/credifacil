@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, Send, Sparkles } from "lucide-react";
 import { products } from "@/lib/products";
 import { employmentOptions, incomeOptions, useLead } from "@/lib/lead";
@@ -177,8 +178,23 @@ export function ContactForm({ defaultProduct }: Props) {
       )}
 
       <label className="mt-5 flex items-start gap-3 text-sm text-ink-soft">
-        <input type="checkbox" required className="mt-1 size-4 accent-[var(--color-brand-600)]" />
-        Autorizo a Credifácil a contactarme y tratar mis datos para gestionar mi solicitud.
+        <input
+          type="checkbox"
+          required
+          className="mt-1 size-4 shrink-0 accent-[var(--color-brand-600)]"
+        />
+        <span>
+          Autorizo a Credifácil a contactarme y a tratar mis datos para gestionar mi
+          solicitud, conforme a los{" "}
+          <Link
+            href="/terminos"
+            target="_blank"
+            className="font-semibold text-brand-700 underline"
+          >
+            términos y el tratamiento de datos
+          </Link>
+          .
+        </span>
       </label>
 
       <Button type="submit" size="lg" className="mt-6 w-full">

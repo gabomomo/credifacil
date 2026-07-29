@@ -47,4 +47,28 @@ export const site = {
     address: email,
     mailto: `mailto:${email}`,
   },
+  /**
+   * Identificación de la persona responsable de la base de datos. La Ley 8968
+   * exige informar quién trata los datos, así que estos campos aparecen en la
+   * política de tratamiento de datos.
+   *
+   * ⚠️ TODOS SON PLACEHOLDER: sin la razón social y la cédula jurídica reales,
+   * la política no identifica a nadie y no cumple su propósito.
+   */
+  legal: {
+    /** Razón social inscrita en el Registro Nacional. */
+    entity: "Credifácil S. A.",
+    /** Cédula jurídica. */
+    taxId: "3-101-000000",
+    /** Dirección física exacta para notificaciones. */
+    address: "San José, Costa Rica",
+    /**
+     * Número de inscripción de la base de datos ante la PRODHAB. Se deja vacío
+     * a propósito: mientras no exista, la política lo dice explícitamente en
+     * vez de inventar un número.
+     */
+    prodhabRegistration: "",
+    /** Fecha de la última revisión del texto legal (AAAA-MM-DD). */
+    lastUpdated: "2026-07-29",
+  },
 } as const;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Pencil } from "lucide-react";
 import { products, type ProductSlug } from "@/lib/products";
 import {
@@ -254,10 +255,16 @@ export function CreditWizard() {
                 className="mt-1 size-4 shrink-0 accent-[var(--color-brand-600)]"
               />
               <span>
-                Acepto los términos y condiciones y autorizo a Credifácil a contactarme y a
-                tratar mis datos personales para gestionar mi solicitud, conforme a la Ley
-                8968 de Protección de la Persona frente al Tratamiento de sus Datos
-                Personales.
+                Acepto los{" "}
+                <Link
+                  href="/terminos"
+                  target="_blank"
+                  className="font-semibold text-brand-700 underline"
+                >
+                  términos y el tratamiento de mis datos
+                </Link>{" "}
+                y autorizo a Credifácil a contactarme para gestionar mi solicitud, conforme
+                a la Ley 8968.
               </span>
             </label>
           </div>

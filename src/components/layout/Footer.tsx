@@ -52,6 +52,7 @@ export function Footer() {
             <li><Link href="/instituciones" className="text-slate-400 hover:text-white">Instituciones aliadas</Link></li>
             <li><Link href="/como-funciona" className="text-slate-400 hover:text-white">Cómo funciona</Link></li>
             <li><Link href="/contacto" className="text-slate-400 hover:text-white">Contacto</Link></li>
+            <li><Link href="/terminos" className="text-slate-400 hover:text-white">Términos y datos</Link></li>
           </ul>
         </div>
 
