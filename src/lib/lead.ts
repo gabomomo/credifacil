@@ -9,6 +9,7 @@
 
 import { useSyncExternalStore } from "react";
 import { site } from "@/lib/site";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { products, type ProductSlug } from "@/lib/products";
 import { formatCRC, formatTerm } from "@/lib/simulator";
 
@@ -176,19 +177,8 @@ export function formatLeadSummary(
   ].join("\n");
 }
 
-/**
- * ⚠️ ÚNICO PUNTO DE CONEXIÓN CON EL BACKEND.
- *
- * El sitio se exporta estático (`output: "export"` en next.config.ts), así que
- * NO puede tener API routes de Next. Mientras no se elija un servicio, esta
- * función abre el cliente de correo del visitante con el resumen ya redactado
- * y a Credifácil en copia: el lead llega, pero depende de que la persona
- * presione "enviar" y no queda registrado en ninguna base de datos.
- *
- * Para conectarlo de verdad, sustituir el cuerpo por un POST al servicio
- * elegido (Formspree, Web3Forms, Supabase…). El resto de la app no cambia.
- */
-export function submitLead(
+/** Abre el cliente de correo con el resumen redactado y Credifácil en copia. */
+export function openLeadEmail(
   lead: Lead,
   result: { monthlyPayment: number; totalPaid: number },
 ): void {
@@ -200,4 +190,61 @@ export function submitLead(
     `&subject=${encodeURIComponent(subject)}` +
     `&body=${encodeURIComponent(body)}`;
   window.location.href = url;
+}
+
+export type SubmitOutcome =
+  /** Guardado en Firestore: queda en el panel. */
+  | { kind: "saved" }
+  /** Sin Firebase o con fallo al guardar: se abrió el correo. */
+  | { kind: "emailed" }
+  | { kind: "error"; message: string };
+
+/**
+ * ⚠️ ÚNICO PUNTO DE ENVÍO DE SOLICITUDES.
+ *
+ * El sitio se exporta estático (`output: "export"`), así que no hay API routes:
+ * la persistencia va directo del navegador a Firestore, y lo que protege los
+ * datos son las reglas de seguridad (firestore.rules), no este código.
+ *
+ * Si Firebase no está configurado —o si la escritura falla— se cae al correo.
+ * Esa degradación es deliberada: perder el lead sería peor que enviarlo por un
+ * camino menos cómodo.
+ */
+export async function submitLead(
+  lead: Lead,
+  result: { monthlyPayment: number; totalPaid: number },
+  annualRate: number,
+  source: "wizard" | "contacto" = "wizard",
+  extra?: { phone?: string; message?: string },
+): Promise<SubmitOutcome> {
+  if (!isFirebaseConfigured()) {
+    openLeadEmail(lead, result);
+    return { kind: "emailed" };
+  }
+
+  try {
+    const { createLead } = await import("@/lib/db/leads");
+    const id = await createLead({
+      name: lead.name,
+      email: lead.email,
+      phone: extra?.phone,
+      product: lead.product,
+      employment: lead.employment,
+      income: lead.income,
+      amount: lead.amount,
+      months: lead.months,
+      monthlyPayment: result.monthlyPayment,
+      annualRate,
+      message: extra?.message,
+      source,
+    });
+    if (id) return { kind: "saved" };
+    openLeadEmail(lead, result);
+    return { kind: "emailed" };
+  } catch {
+    // Sin conexión, reglas que rechazan, cuota agotada: da igual el motivo,
+    // el lead no se puede perder.
+    openLeadEmail(lead, result);
+    return { kind: "emailed" };
+  }
 }

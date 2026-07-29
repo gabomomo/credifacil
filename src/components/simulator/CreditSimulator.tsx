@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Info, ArrowRight, Mail } from "lucide-react";
 import { products, type ProductSlug } from "@/lib/products";
 import { calculateLoan, formatCRC, formatNumber, formatTerm } from "@/lib/simulator";
-import { submitLead, type Lead } from "@/lib/lead";
+import { submitLead, type Lead, type SubmitOutcome } from "@/lib/lead";
+import { useWeightedRate } from "@/lib/useWeightedRate";
+import { verificationAgeInDays, STALE_AFTER_DAYS } from "@/lib/rating";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -62,12 +64,49 @@ export function CreditSimulator({
     onChange?.(nextAmount, p.term.default);
   }
 
+  /*
+   * Tasa: la ponderada de las instituciones para las que la persona califica y,
+   * si no hay catálogo o ninguna oferta calza, la de ejemplo del producto. El
+   * orden importa: `exampleRate` se usa desde el primer render, así que el
+   * simulador siempre muestra una cifra sin esperar a la red.
+   */
+  const applicant = useMemo(
+    () =>
+      lead
+        ? {
+            product: slug,
+            employment: lead.employment,
+            income: lead.income,
+            amount,
+            months,
+          }
+        : null,
+    [lead, slug, amount, months],
+  );
+  const weighted = useWeightedRate(applicant);
+  const annualRate = weighted?.rate ?? product.exampleRate;
+
   const result = useMemo(
-    () => calculateLoan({ amount, annualRate: product.exampleRate, months }),
-    [amount, months, product.exampleRate],
+    () => calculateLoan({ amount, annualRate, months }),
+    [amount, months, annualRate],
   );
 
+  const staleDays = weighted
+    ? verificationAgeInDays(weighted.oldestVerification, new Date())
+    : 0;
+
   const termLabel = formatTerm(months);
+
+  const [sending, setSending] = useState(false);
+  const [outcome, setOutcome] = useState<SubmitOutcome | null>(null);
+
+  async function sendByEmail() {
+    if (!lead) return;
+    setSending(true);
+    const r = await submitLead({ ...lead, amount, months }, result, annualRate, "wizard");
+    setOutcome(r);
+    setSending(false);
+  }
 
   return (
     <div
@@ -166,14 +205,31 @@ export function CreditSimulator({
         </p>
         <div className="mt-5 grid grid-cols-2 gap-4 border-t border-white/15 pt-4 text-sm">
           <div>
-            <p className="text-brand-200">Tasa de ejemplo</p>
-            <p className="font-semibold">{product.exampleRate}% anual</p>
+            {/* La etiqueta cambia con la procedencia del número: presentar una
+                tasa real como "de ejemplo" (o al revés) sería engañoso. */}
+            <p className="text-brand-200">
+              {weighted ? "Tasa ponderada" : "Tasa de ejemplo"}
+            </p>
+            <p className="font-semibold">{annualRate}% anual</p>
+            {weighted && (
+              <p className="mt-0.5 text-xs text-brand-200">
+                {weighted.count} institución{weighted.count === 1 ? "" : "es"} · mejor:{" "}
+                {weighted.bestRate}% ({weighted.bestInstitution})
+              </p>
+            )}
           </div>
           <div>
             <p className="text-brand-200">Total a pagar</p>
             <p className="font-semibold">{formatCRC(result.totalPaid)}</p>
           </div>
         </div>
+
+        {weighted && staleDays > STALE_AFTER_DAYS && (
+          <p className="mt-4 rounded-xl bg-white/10 px-3 py-2 text-xs text-brand-100">
+            Algunas de estas tasas llevan {staleDays} días sin verificarse. Confirmá las
+            condiciones vigentes con la institución.
+          </p>
+        )}
       </div>
 
       <Link
@@ -187,12 +243,31 @@ export function CreditSimulator({
       {lead && (
         <button
           type="button"
-          onClick={() => submitLead({ ...lead, amount, months }, result)}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border-2 border-brand-200 px-6 py-3 font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-50"
+          onClick={sendByEmail}
+          disabled={sending}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border-2 border-brand-200 px-6 py-3 font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-50 disabled:opacity-60"
         >
           <Mail className="size-5" />
-          Enviarme esta simulación por correo
+          {sending ? "Enviando…" : "Enviarme esta simulación por correo"}
         </button>
+      )}
+
+      {outcome && (
+        <p
+          aria-live="polite"
+          className={cn(
+            "mt-3 rounded-xl px-4 py-3 text-sm",
+            outcome.kind === "error"
+              ? "bg-red-50 text-red-700"
+              : "bg-accent-50 text-accent-700",
+          )}
+        >
+          {outcome.kind === "saved" &&
+            "¡Listo! Guardamos tu simulación y un asesor te va a contactar."}
+          {outcome.kind === "emailed" &&
+            "Te abrimos el correo con el resumen. Solo falta que lo envíes."}
+          {outcome.kind === "error" && outcome.message}
+        </p>
       )}
 
       <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-500">

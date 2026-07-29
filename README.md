@@ -62,6 +62,109 @@ ingresos, y en la URL quedarían registrados en el historial del navegador, en l
 encabezados `Referer` y en cualquier herramienta de analítica. `ContactForm` los lee con
 `useSyncExternalStore` (ver el comentario en `lead.ts`).
 
+## Configurar Firebase
+
+El sitio funciona **sin Firebase**: el simulador usa las tasas de ejemplo de `products.ts`
+y las solicitudes se envían por correo. Configurarlo activa tres cosas: guardar las
+solicitudes, el panel `/admin` y la tasa ponderada.
+
+### 1. Crear el proyecto
+
+1. Entrá a [console.firebase.google.com](https://console.firebase.google.com) → **Agregar
+   proyecto**. Podés desactivar Google Analytics.
+2. **Compilación → Firestore Database → Crear base de datos**. Elegí la ubicación
+   `nam5` (o la más cercana) y **modo de producción** (las reglas de este repo lo cubren).
+3. **Compilación → Authentication → Comenzar → Google** y activalo.
+4. **⚙ Configuración del proyecto → Tus apps → Web (`</>`)**. Registrá la app y copiá el
+   bloque `firebaseConfig`.
+
+### 2. Conectar el código
+
+```bash
+cp env.example .env.local     # y pegá ahí los valores del paso 4
+npm run dev
+```
+
+Para que el sitio publicado también los tenga, hay que agregarlos como *secrets* del
+repositorio en GitHub (**Settings → Secrets and variables → Actions**) y pasarlos al paso
+de build en `.github/workflows/deploy.yml`.
+
+### 3. Publicar las reglas de seguridad
+
+⚠️ **Esto no es opcional.** Sin las reglas de este repositorio, la base de datos queda
+como la deje la consola, y `leads` contiene nombres, correos e ingresos de tus clientes.
+
+```bash
+npx firebase login
+npx firebase use --add          # elegí tu proyecto
+npx firebase deploy --only firestore:rules
+```
+
+### 4. Crear el primer administrador
+
+Las reglas exigen ser `owner` para otorgar accesos, así que el primer registro va a mano:
+
+1. Entrá a `/admin` y hacé login con Google. Vas a ver *"Tu cuenta no tiene acceso"* y,
+   debajo, **tu identificador de usuario (uid)**. Copialo.
+2. En la consola de Firebase → **Firestore Database → Iniciar colección**:
+   - Colección: `admins`
+   - ID del documento: **el uid que copiaste**
+   - Campos: `email` (string, tu correo), `role` (string, `owner`),
+     `createdAt` (timestamp, ahora)
+3. Recargá `/admin`. Desde ahí ya podés dar acceso a otras personas.
+
+### Modelo de datos
+
+| Colección | Lectura | Escritura | Contenido |
+|---|---|---|---|
+| `leads` | solo admin | **cualquiera crea** | Solicitudes: datos personales |
+| `institutions` | pública | solo admin | Bancos, cooperativas y mutuales |
+| `offers` | pública | solo admin | Tasas y criterios por producto |
+| `admins` | solo admin | solo `owner` | Quién entra al panel |
+
+La asimetría de `leads` es el punto clave: el formulario público necesita **crear**, pero
+nunca **leer**. Si esa regla se relaja, cualquiera puede descargar la base completa de
+clientes.
+
+### Pruebas
+
+```bash
+npm test           # 14 casos del ponderado (no necesita nada más)
+npm run test:rules # 28 casos de las reglas de seguridad (requiere Java)
+```
+
+`test:rules` levanta el emulador de Firestore y **ataca las reglas**: intenta leer
+solicitudes sin permiso, autoconcederse el rol de `owner`, falsificar la fecha de
+creación, inyectar notas internas, forzar el estado y escribir campos fuera de la lista
+blanca. Cada caso comprueba que la operación **falla**.
+
+Conviene correrlo después de tocar `firestore.rules`: un error ahí no da ningún síntoma
+visible, simplemente deja los datos accesibles.
+
+El emulador necesita Java. Si no lo tenés:
+
+```bash
+brew install openjdk
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+```
+
+> Nota: al correr las pruebas vas a ver mensajes `evaluation error` en el registro del
+> emulador. No son un fallo de las reglas: Firestore evalúa dos veces toda escritura que
+> use `serverTimestamp()` —antes y después de resolver el centinela— y la decisión válida
+> es la segunda. Con un `Timestamp` normal no aparecen.
+
+### La tasa ponderada
+
+El simulador promedia las tasas de las instituciones **para las que la persona califica**,
+según lo que declaró en el wizard (situación laboral e ingresos) y lo que pidió (monto y
+plazo). Cada institución tiene un `weight` (1 = neutro) para dar más influencia a las que
+tienen convenio.
+
+Si ninguna oferta calza —o si Firebase no está configurado— cae a la `exampleRate` del
+producto y la etiqueta cambia de *"Tasa ponderada"* a *"Tasa de ejemplo"*. Cada oferta
+guarda `verifiedAt`, y pasados **60 días** el simulador avisa que las tasas necesitan
+confirmarse.
+
 ## Identidad visual
 
 - **Primario:** azul `#1e4dd8` · **Acento:** verde/teal `#10b981`

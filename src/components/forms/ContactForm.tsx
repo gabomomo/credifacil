@@ -4,7 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Send, Sparkles } from "lucide-react";
 import { products } from "@/lib/products";
-import { employmentOptions, incomeOptions, useLead } from "@/lib/lead";
+import {
+  employmentOptions,
+  incomeOptions,
+  submitLead,
+  useLead,
+  type Lead,
+  type SubmitOutcome,
+} from "@/lib/lead";
 import { formatNumber, formatTerm } from "@/lib/simulator";
 import { Button } from "@/components/ui/Button";
 
@@ -21,9 +28,40 @@ export function ContactForm({ defaultProduct }: Props) {
   /** Datos del wizard del simulador, si la persona pasó por ahí. */
   const lead = useLead();
 
-  // Solo diseño: no envía datos a ningún servidor todavía.
-  function handleSubmit(e: React.FormEvent) {
+  const [sending, setSending] = useState(false);
+  const [outcome, setOutcome] = useState<SubmitOutcome | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const amountDigits = String(form.get("amount") ?? "").replace(/\D/g, "");
+
+    // El wizard aporta situación laboral e ingresos; quien llega directo a esta
+    // página no los tiene, y la solicitud se guarda igual sin ellos.
+    const payload: Lead = {
+      name: String(form.get("name") ?? "").trim(),
+      email: String(form.get("email") ?? "").trim(),
+      acceptedTerms: true,
+      product: (form.get("product") as Lead["product"]) || "personal",
+      employment: lead?.employment as Lead["employment"],
+      income: lead?.income as Lead["income"],
+      amount: Number(amountDigits) || lead?.amount || 0,
+      months: lead?.months ?? 0,
+    };
+
+    setSending(true);
+    const r = await submitLead(
+      payload,
+      { monthlyPayment: 0, totalPaid: 0 },
+      0,
+      "contacto",
+      {
+        phone: String(form.get("phone") ?? "").trim(),
+        message: String(form.get("message") ?? "").trim() || undefined,
+      },
+    );
+    setOutcome(r);
+    setSending(false);
     setSent(true);
   }
 
@@ -35,8 +73,9 @@ export function ContactForm({ defaultProduct }: Props) {
           ¡Solicitud recibida!
         </h3>
         <p className="mx-auto mt-2 max-w-md text-ink-soft">
-          Gracias por tu interés. Un asesor de Credifácil se pondrá en contacto con vos muy
-          pronto. (Demostración: el formulario aún no está conectado a un servidor.)
+          {outcome?.kind === "saved"
+            ? "Gracias por tu interés. Un asesor de Credifácil se pondrá en contacto con vos muy pronto."
+            : "Te abrimos el correo con tu solicitud: solo falta que lo envíes para que nos llegue."}
         </p>
         <Button variant="outline" className="mt-6" onClick={() => setSent(false)}>
           Enviar otra solicitud
@@ -197,9 +236,9 @@ export function ContactForm({ defaultProduct }: Props) {
         </span>
       </label>
 
-      <Button type="submit" size="lg" className="mt-6 w-full">
+      <Button type="submit" size="lg" className="mt-6 w-full" disabled={sending}>
         <Send className="size-5" />
-        Enviar solicitud
+        {sending ? "Enviando…" : "Enviar solicitud"}
       </Button>
 
       <p className="mt-4 text-center text-xs text-slate-400">

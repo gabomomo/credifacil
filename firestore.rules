@@ -1,0 +1,126 @@
+rules_version = '2';
+
+// Reglas de acceso a Firestore para Credifácil.
+//
+// Premisa: el sitio es estático y todo el código corre en el navegador de quien
+// lo visita. No hay servidor propio donde esconder lógica, así que ESTAS REGLAS
+// son lo único que separa la base de datos de cualquiera con un navegador.
+//
+// La asimetría de `leads` es el corazón del asunto: el formulario público
+// necesita CREAR solicitudes, pero jamás necesita LEERLAS. Si `read` quedara
+// abierto, cualquiera podría descargar la base completa de nombres, correos,
+// ingresos y montos de los clientes.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Ser admin = existir en /admins con el propio uid como id del documento.
+    // Se consulta el documento en vez de confiar en un campo del request, que
+    // el cliente podría falsificar.
+    function adminDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasRole(role) {
+      return isAdmin() && adminDoc().role == role;
+    }
+
+    // Editar contenido: owner o editor. viewer queda en solo lectura.
+    function canEdit() {
+      return hasRole('owner') || hasRole('editor');
+    }
+
+    // ---------- leads: escritura pública, lectura privada ----------
+
+    match /leads/{leadId} {
+      // Cualquiera lee NADA. Solo el panel.
+      allow read: if isAdmin();
+
+      // Cualquiera puede enviar una solicitud, pero con forma validada: sin
+      // esto, la colección es un buzón abierto para basura de cualquier tamaño.
+      allow create: if isValidLead(request.resource.data);
+
+      // Solo el panel gestiona el estado y las notas internas.
+      allow update: if canEdit();
+      allow delete: if hasRole('owner');
+    }
+
+    // Los campos opcionales se leen con d.get(clave, valorPorDefecto) en vez de
+    // d.clave: acceder a una clave ausente lanza un error de evaluación, y una
+    // regla que revienta en lugar de devolver false es frágil. El valor por
+    // defecto está elegido para pasar la comprobación cuando el campo no viene.
+    function isValidLead(d) {
+      // employment e income NO son obligatorios: quien llega directo a
+      // /contacto sin pasar por el wizard no los declara.
+      return d.keys().hasAll(['name', 'email', 'product',
+                              'amount', 'months', 'source', 'status', 'createdAt'])
+        // Lista blanca de campos: nada fuera de esto entra.
+        && d.keys().hasOnly(['name', 'email', 'phone', 'product', 'employment',
+                             'income', 'amount', 'months', 'monthlyPayment',
+                             'annualRate', 'message', 'source', 'status',
+                             'createdAt'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 120
+        && d.email is string && d.email.size() <= 200 && d.email.matches('.+@.+[.].+')
+        && d.get('phone', '') is string && d.get('phone', '').size() <= 40
+        && d.get('message', '') is string && d.get('message', '').size() <= 2000
+        && d.product in ['hipotecario', 'personal', 'vehiculo', 'pyme']
+        && d.get('employment', 'privado') in ['publico', 'privado', 'independiente']
+        && d.get('income', 'r1') in ['r1', 'r2', 'r3', 'r4', 'r5']
+        && d.amount is number && d.amount > 0 && d.amount <= 1000000000
+        && d.months is number && d.months > 0 && d.months <= 480
+        && d.get('monthlyPayment', 0) is number
+        && d.get('annualRate', 0) is number
+        && d.source in ['wizard', 'contacto']
+        // Quien envía no elige el estado: toda solicitud nace como 'nuevo'.
+        && d.status == 'nuevo'
+        // La fecha la pone el servidor, no el cliente.
+        && d.createdAt == request.time;
+    }
+
+    // ---------- institutions y offers: lectura pública ----------
+    // Son información comercial que el sitio muestra abiertamente (quiénes son
+    // los aliados y qué tasas ofrecen), así que leerlas no expone a nadie.
+
+    match /institutions/{institutionId} {
+      allow read: if true;
+      allow write: if canEdit();
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if canEdit();
+    }
+
+    // ---------- admins: quién puede entrar al panel ----------
+
+    match /admins/{uid} {
+      // Un admin ve la lista de admins. Nadie más.
+      allow read: if isAdmin();
+
+      // Solo un owner otorga o revoca acceso...
+      allow create, update: if hasRole('owner');
+
+      // ...y no puede quitarse a sí mismo, para no dejar el panel sin dueño.
+      allow delete: if hasRole('owner') && uid != request.auth.uid;
+    }
+
+    // ---------- Todo lo demás, cerrado ----------
+    // Sin esta regla, una colección nueva creada por descuido quedaría sujeta a
+    // lo que diga la consola, no a este archivo.
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
