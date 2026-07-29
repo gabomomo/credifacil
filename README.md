@@ -30,15 +30,37 @@ src/
   components/
     layout/    Header, Footer
     home/      Secciones de la Home (Hero, ProductGrid, HowItWorks, ...)
-    simulator/ CreditSimulator (componente interactivo)
-    forms/     ContactForm (maquetado)
+    simulator/ CreditWizard (4 pasos) + CreditSimulator (cuota en vivo)
+    forms/     ContactForm (maquetado, se prellena con el lead)
     ui/        Button, Logo, Accordion, SectionHeading, Reveal, InstitutionLogo
   lib/
     site.ts           # ⚙️ Contacto, WhatsApp, correo y dominio (punto único de edición)
+    lead.ts           # ⚙️ Datos del wizard + submitLead (punto único de conexión al backend)
     products.ts       # Datos de los 4 tipos de crédito (copy, rangos, tasa de ejemplo)
     institutions.ts   # Instituciones de Costa Rica (con logo placeholder)
-    simulator.ts      # Cálculo de cuota (amortización francesa) y formato de colones
+    simulator.ts      # Cálculo de cuota (amortización francesa), colones y plazos
 ```
+
+## Recorrido de la solicitud
+
+El simulador vive **solo en `/simulador`** (la Home lo enlaza, no lo incrusta) y funciona
+como un wizard de cuatro pasos:
+
+```
+1. Nombre + correo + aceptación de T&C
+2. Tipo de crédito
+3. Situación laboral (público / privado / independiente) + rango de ingresos
+4. Monto y plazo aproximados
+   ↓
+Simulador con la cuota en vivo (se puede afinar monto y plazo)
+   ├── "Solicitar con estas condiciones" → /contacto con el formulario ya prellenado
+   └── "Enviarme esta simulación por correo" → submitLead()
+```
+
+Los datos viajan en **`sessionStorage`**, no en la URL: incluyen nombre, correo y rango de
+ingresos, y en la URL quedarían registrados en el historial del navegador, en los
+encabezados `Referer` y en cualquier herramienta de analítica. `ContactForm` los lee con
+`useSyncExternalStore` (ver el comentario en `lead.ts`).
 
 ## Identidad visual
 
@@ -50,22 +72,35 @@ src/
 
 Esta primera entrega es de **diseño y estructura**. Falta conectar/verificar:
 
-1. **Formularios sin backend:** `ContactForm` solo muestra un estado de éxito; no envía
-   datos. ⚠️ Ojo con la restricción: el sitio usa `output: "export"`, así que **no puede
-   tener API routes de Next.js**. Las opciones viables son un servicio externo
-   (Formspree, Web3Forms), una base de datos tipo Supabase, o armar un enlace
-   `wa.me` con el mensaje prellenado (la única que no requiere cuenta ni clave).
-2. **Logos de instituciones:** son monogramas placeholder (`InstitutionLogo`). Reemplazar
+1. **Nada se guarda en un servidor.** ⚠️ El sitio usa `output: "export"`, así que **no
+   puede tener API routes de Next.js**. Hoy:
+   - `ContactForm` solo muestra un estado de éxito; no envía nada.
+   - `submitLead()` en `lib/lead.ts` abre el cliente de correo del visitante con el
+     resumen redactado y Credifácil en copia. **El lead llega solo si la persona
+     presiona "enviar"**, y no queda registrado en ninguna base de datos.
+
+   Para conectarlo de verdad basta con sustituir el cuerpo de `submitLead()` por un POST
+   al servicio elegido (Formspree, Web3Forms, Supabase…): el resto de la app no cambia.
+
+2. **No existe la página de términos y condiciones.** El paso 1 del wizard obliga a
+   marcar "Acepto los términos y condiciones", pero ese texto no está publicado en ningún
+   lado. Hace falta redactar los T&C y la política de privacidad **con asesoría legal**
+   (Ley 8968) y enlazarlos desde la casilla. Pedir aceptación de algo que no se puede
+   leer no se sostiene, menos en un sitio de intermediación financiera.
+3. **Logos de instituciones:** son monogramas placeholder (`InstitutionLogo`). Reemplazar
    por logos oficiales y confirmar permisos de uso de marca.
-3. **Tasas y montos:** las tasas de `products.ts` (`exampleRate`) son **ejemplos**, no ofertas
+4. **Tasas y montos:** las tasas de `products.ts` (`exampleRate`) son **ejemplos**, no ofertas
    reales. Verificar con cada institución antes de publicar cifras.
-4. **Datos de contacto:** teléfono, WhatsApp y correo son placeholders. Ya están
+5. **Datos de contacto:** teléfono, WhatsApp y correo son placeholders. Ya están
    centralizados en **`src/lib/site.ts`**: cambiando `phoneDigits` y `email` ahí se
-   actualizan Header, Footer, Contacto y todos los CTAs de una sola vez.
-5. **Logo de marca:** `src/components/ui/Logo.tsx` es un logo generado; sustituir por el
+   actualizan Header, Footer, Contacto, los CTAs y la copia del correo de `submitLead()`.
+6. **Logo de marca:** `src/components/ui/Logo.tsx` es un logo generado; sustituir por el
    oficial cuando exista.
-6. **Dominio y metadata:** el dominio vive en `url` dentro de `src/lib/site.ts`
+7. **Dominio y metadata:** el dominio vive en `url` dentro de `src/lib/site.ts`
    (actualmente `https://credifacil.cr`); `layout.tsx` lo consume desde ahí.
+8. **Rangos de ingreso sin validar:** los cinco tramos de `incomeOptions` en `lib/lead.ts`
+   son una propuesta razonable para Costa Rica, no un criterio acordado con ninguna
+   institución. Ajustarlos a los cortes que de verdad usan los analistas de crédito.
 
 ### Notas de mantenimiento
 

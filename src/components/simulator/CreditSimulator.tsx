@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Info, ArrowRight } from "lucide-react";
+import { Info, ArrowRight, Mail } from "lucide-react";
 import { products, type ProductSlug } from "@/lib/products";
-import { calculateLoan, formatCRC, formatNumber } from "@/lib/simulator";
+import { calculateLoan, formatCRC, formatNumber, formatTerm } from "@/lib/simulator";
+import { submitLead, type Lead } from "@/lib/lead";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -12,22 +13,53 @@ interface Props {
   initialSlug?: ProductSlug;
   /** Oculta el selector de tipo de crédito (para páginas de un solo producto) */
   lockProduct?: boolean;
+  /** Monto inicial; por defecto, el sugerido del producto */
+  initialAmount?: number;
+  /** Plazo inicial en meses; por defecto, el sugerido del producto */
+  initialMonths?: number;
+  /**
+   * Datos capturados en el wizard. Si vienen, se habilita el botón de enviar la
+   * simulación por correo y el CTA arrastra la información al formulario.
+   */
+  lead?: Lead;
+  /** Avisa al wizard de los ajustes de monto/plazo para mantener el lead al día. */
+  onChange?: (amount: number, months: number) => void;
   className?: string;
 }
 
-export function CreditSimulator({ initialSlug = "hipotecario", lockProduct = false, className }: Props) {
+export function CreditSimulator({
+  initialSlug = "hipotecario",
+  lockProduct = false,
+  initialAmount,
+  initialMonths,
+  lead,
+  onChange,
+  className,
+}: Props) {
   const [slug, setSlug] = useState<ProductSlug>(initialSlug);
   const product = useMemo(() => products.find((p) => p.slug === slug)!, [slug]);
 
-  const [amount, setAmount] = useState(product.amount.default);
-  const [months, setMonths] = useState(product.term.default);
+  const [amount, setAmount] = useState(initialAmount ?? product.amount.default);
+  const [months, setMonths] = useState(initialMonths ?? product.term.default);
+
+  function updateAmount(next: number) {
+    setAmount(next);
+    onChange?.(next, months);
+  }
+
+  function updateMonths(next: number) {
+    setMonths(next);
+    onChange?.(amount, next);
+  }
 
   // Al cambiar de producto, reajustar monto/plazo a los rangos válidos
   function changeProduct(next: ProductSlug) {
     const p = products.find((x) => x.slug === next)!;
+    const nextAmount = Math.min(Math.max(amount, p.amount.min), p.amount.max);
     setSlug(next);
-    setAmount((a) => Math.min(Math.max(a, p.amount.min), p.amount.max));
+    setAmount(nextAmount);
     setMonths(p.term.default);
+    onChange?.(nextAmount, p.term.default);
   }
 
   const result = useMemo(
@@ -35,12 +67,7 @@ export function CreditSimulator({ initialSlug = "hipotecario", lockProduct = fal
     [amount, months, product.exampleRate],
   );
 
-  const years = Math.floor(months / 12);
-  const remMonths = months % 12;
-  const termLabel =
-    years > 0
-      ? `${years} ${years === 1 ? "año" : "años"}${remMonths ? ` ${remMonths} m` : ""}`
-      : `${months} meses`;
+  const termLabel = formatTerm(months);
 
   return (
     <div
@@ -93,7 +120,7 @@ export function CreditSimulator({ initialSlug = "hipotecario", lockProduct = fal
           max={product.amount.max}
           step={product.amount.step}
           value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
+          onChange={(e) => updateAmount(Number(e.target.value))}
           className="cf-range"
           aria-label="Monto del crédito"
         />
@@ -115,13 +142,13 @@ export function CreditSimulator({ initialSlug = "hipotecario", lockProduct = fal
           max={product.term.max}
           step={product.term.step}
           value={months}
-          onChange={(e) => setMonths(Number(e.target.value))}
+          onChange={(e) => updateMonths(Number(e.target.value))}
           className="cf-range"
           aria-label="Plazo en meses"
         />
         <div className="mt-1 flex justify-between text-xs text-slate-400">
-          <span>{Math.round(product.term.min / 12) || product.term.min} {product.term.min >= 12 ? "años" : "meses"}</span>
-          <span>{Math.round(product.term.max / 12)} años</span>
+          <span>{formatTerm(product.term.min)}</span>
+          <span>{formatTerm(product.term.max)}</span>
         </div>
       </div>
 
@@ -156,6 +183,17 @@ export function CreditSimulator({ initialSlug = "hipotecario", lockProduct = fal
         Solicitar con estas condiciones
         <ArrowRight className="size-5" />
       </Link>
+
+      {lead && (
+        <button
+          type="button"
+          onClick={() => submitLead({ ...lead, amount, months }, result)}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border-2 border-brand-200 px-6 py-3 font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-50"
+        >
+          <Mail className="size-5" />
+          Enviarme esta simulación por correo
+        </button>
+      )}
 
       <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-500">
         <Info className="mt-0.5 size-4 shrink-0 text-slate-400" />
