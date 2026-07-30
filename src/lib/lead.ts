@@ -284,9 +284,8 @@ export type SubmitOutcome =
    * asesor ya la tomó); el lead está a salvo igual.
    */
   | { kind: "saved"; updated?: boolean }
-  /** Sin Firebase o con fallo al guardar: se abrió el correo. */
-  | { kind: "emailed" }
-  | { kind: "error"; message: string };
+  /** No se pudo guardar: sin Firebase configurado, o la escritura falló. */
+  | { kind: "not-saved" };
 
 /**
  * ⚠️ ÚNICO PUNTO DE ENVÍO DE SOLICITUDES.
@@ -306,10 +305,7 @@ export async function submitLead(
   source: "wizard" | "contacto" = "wizard",
   extra?: { phone?: string; message?: string },
 ): Promise<SubmitOutcome> {
-  if (!isFirebaseConfigured()) {
-    openLeadEmail(lead, result);
-    return { kind: "emailed" };
-  }
+  if (!isFirebaseConfigured()) return { kind: "not-saved" };
 
   try {
     const { createLead, completeLead } = await import("@/lib/db/leads");
@@ -352,12 +348,10 @@ export async function submitLead(
       saveLeadId(id);
       return { kind: "saved" };
     }
-    openLeadEmail(lead, result);
-    return { kind: "emailed" };
+    return { kind: "not-saved" };
   } catch {
-    // Sin conexión, reglas que rechazan, cuota agotada: da igual el motivo,
-    // el lead no se puede perder.
-    openLeadEmail(lead, result);
-    return { kind: "emailed" };
+    // Sin conexión, reglas que rechazan, cuota agotada: el motivo da igual.
+    // Quien llama decide el plan B (enviar por correo, avisar en pantalla).
+    return { kind: "not-saved" };
   }
 }

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Info, ArrowRight, Mail } from "lucide-react";
 import { products, type ProductSlug } from "@/lib/products";
 import { calculateLoan, formatCRC, formatNumber, formatTerm } from "@/lib/simulator";
-import { submitLead, type Lead, type SubmitOutcome } from "@/lib/lead";
+import { openLeadEmail, submitLead, type Lead } from "@/lib/lead";
+import { sendSimulationEmail } from "@/lib/email";
 import { useWeightedRate } from "@/lib/useWeightedRate";
 import { verificationAgeInDays, STALE_AFTER_DAYS } from "@/lib/rating";
 import { cn } from "@/lib/cn";
@@ -98,15 +99,50 @@ export function CreditSimulator({
   const termLabel = formatTerm(months);
 
   const [sending, setSending] = useState(false);
-  const [outcome, setOutcome] = useState<SubmitOutcome | null>(null);
+  const [feedback, setFeedback] = useState<
+    { tone: "ok" | "warn"; text: string } | null
+  >(null);
 
+  /**
+   * Envía la simulación al correo de la persona y deja la solicitud al día.
+   *
+   * El orden importa: primero se asegura el dato (el lead es lo que no se puede
+   * perder) y después se envía. Si no hay canal de envío configurado o falla,
+   * se cae al cliente de correo del visitante: menos cómodo, pero cumple lo
+   * que el botón promete en vez de mentir.
+   */
   async function sendByEmail() {
     if (!lead) return;
     setSending(true);
-    const r = await submitLead({ ...lead, amount, months }, result, annualRate, "wizard", {
+    setFeedback(null);
+
+    const current = { ...lead, amount, months };
+    const saved = await submitLead(current, result, annualRate, "wizard", {
       phone: lead.phone,
     });
-    setOutcome(r);
+    const mail = await sendSimulationEmail(current, result, annualRate);
+
+    if (mail === "sent") {
+      setFeedback({
+        tone: "ok",
+        text: `Te enviamos la simulación a ${lead.email}. Revisá tu bandeja —y la carpeta de no deseados, por si acaso.`,
+      });
+    } else if (mail === "rate-limited") {
+      setFeedback({
+        tone: "warn",
+        text: "Ya te enviamos varias simulaciones. Revisá tu correo o probá de nuevo en un rato.",
+      });
+    } else {
+      // Sin endpoint configurado, o el envío falló: plan B.
+      openLeadEmail(current, result);
+      setFeedback({
+        tone: "warn",
+        text:
+          saved.kind === "saved"
+            ? "Guardamos tu simulación y te abrimos el correo con el resumen: solo falta que lo envíes."
+            : "Te abrimos el correo con el resumen: solo falta que lo envíes.",
+      });
+    }
     setSending(false);
   }
 
@@ -254,21 +290,17 @@ export function CreditSimulator({
         </button>
       )}
 
-      {outcome && (
+      {feedback && (
         <p
           aria-live="polite"
           className={cn(
             "mt-3 rounded-xl px-4 py-3 text-sm",
-            outcome.kind === "error"
-              ? "bg-red-50 text-red-700"
+            feedback.tone === "warn"
+              ? "bg-sun-50 text-sun-800"
               : "bg-accent-50 text-accent-700",
           )}
         >
-          {outcome.kind === "saved" &&
-            "¡Listo! Guardamos tu simulación y un asesor te va a contactar."}
-          {outcome.kind === "emailed" &&
-            "Te abrimos el correo con el resumen. Solo falta que lo envíes."}
-          {outcome.kind === "error" && outcome.message}
+          {feedback.text}
         </p>
       )}
 

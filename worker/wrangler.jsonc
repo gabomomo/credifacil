@@ -1,0 +1,32 @@
+{
+  // Worker que envía la simulación por correo vía Brevo.
+  // Se despliega aparte del sitio: ver worker/README.md
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "credifacil-email",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+
+  // Variables públicas. Los SECRETOS (BREVO_API_KEY) NO van acá:
+  // se cargan con `wrangler secret put`, que los guarda cifrados.
+  "vars": {
+    "ALLOWED_ORIGINS": "https://gabomomo.github.io,http://localhost:3000",
+    "SITE_NAME": "Credifácil",
+    "SITE_URL": "https://gabomomo.github.io/credifacil/",
+    // Debe ser un remitente verificado en Brevo, o los envíos fallan.
+    "SENDER_EMAIL": "hola@credifacil.cr"
+  },
+
+  // Límite por IP. Sin este KV el Worker funciona, pero sin límite:
+  //   npx wrangler kv namespace create RATE_LIMIT_KV
+  // y pegar acá el id que devuelve.
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "PENDIENTE_CREAR"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

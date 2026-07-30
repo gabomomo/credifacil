@@ -1,0 +1,15 @@
+{
+  "name": "credifacil-email-worker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Envía la simulación por correo vía Brevo. Se despliega aparte del sitio.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/worker.test.mjs",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

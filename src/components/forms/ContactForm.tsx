@@ -7,6 +7,7 @@ import { products } from "@/lib/products";
 import {
   employmentOptions,
   incomeOptions,
+  openLeadEmail,
   submitLead,
   useLead,
   type Lead,
@@ -50,16 +51,14 @@ export function ContactForm({ defaultProduct }: Props) {
     };
 
     setSending(true);
-    const r = await submitLead(
-      payload,
-      { monthlyPayment: 0, totalPaid: 0 },
-      0,
-      "contacto",
-      {
-        phone: String(form.get("phone") ?? "").trim(),
-        message: String(form.get("message") ?? "").trim() || undefined,
-      },
-    );
+    const result = { monthlyPayment: 0, totalPaid: 0 };
+    const r = await submitLead(payload, result, 0, "contacto", {
+      phone: String(form.get("phone") ?? "").trim(),
+      message: String(form.get("message") ?? "").trim() || undefined,
+    });
+    // Si no se pudo guardar, el correo es el único camino que queda para que
+    // la solicitud llegue a alguien.
+    if (r.kind === "not-saved") openLeadEmail(payload, result);
     setOutcome(r);
     setSending(false);
     setSent(true);

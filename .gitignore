@@ -44,3 +44,7 @@ next-env.d.ts
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+
+# Dependencias del Worker
+worker/node_modules
+worker/.wrangler
