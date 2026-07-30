@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Pencil } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Pencil, MessageCircle } from "lucide-react";
 import { products, type ProductSlug } from "@/lib/products";
 import {
   employmentOptions,
@@ -22,6 +22,21 @@ const STEPS = ["Tus datos", "Tipo de crédito", "Tus ingresos", "Monto y plazo"]
 /** Validación deliberadamente laxa: solo descarta erratas evidentes. */
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
+}
+
+/**
+ * Los números de Costa Rica son de 8 dígitos. Se ignoran espacios, guiones y un
+ * prefijo +506 opcional, porque la gente escribe el número como se le ocurre y
+ * rechazarlo por el formato sería absurdo.
+ */
+function isValidCRPhone(value: string): boolean {
+  return /^\d{8}$/.test(value.replace(/[\s()+-]/g, "").replace(/^506/, ""));
+}
+
+/** Normaliza a "8888 8888" para guardar y mostrar de forma consistente. */
+function normalizeCRPhone(value: string): string {
+  const digits = value.replace(/[\s()+-]/g, "").replace(/^506/, "");
+  return /^\d{8}$/.test(digits) ? `${digits.slice(0, 4)} ${digits.slice(4)}` : value.trim();
 }
 
 const inputBase =
@@ -64,6 +79,7 @@ export function CreditWizard() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [terms, setTerms] = useState(false);
   const [product, setProduct] = useState<ProductSlug>("hipotecario");
   const [employment, setEmployment] = useState<EmploymentId | null>(null);
@@ -88,6 +104,11 @@ export function CreditWizard() {
   if (step === 0) {
     if (!name.trim()) stepErrors.push("Escribe tu nombre.");
     if (!isValidEmail(email)) stepErrors.push("Escribe un correo válido.");
+    // Vacío es válido: el campo es opcional. Solo se revisa lo que sí se escribió,
+    // para no castigar a quien decidió omitirlo.
+    if (phone.trim() && !isValidCRPhone(phone)) {
+      stepErrors.push("El WhatsApp debe tener 8 dígitos, o podés dejarlo en blanco.");
+    }
     if (!terms) stepErrors.push("Debes aceptar el tratamiento de datos.");
   }
   if (step === 2) {
@@ -100,6 +121,9 @@ export function CreditWizard() {
     return {
       name: name.trim(),
       email: email.trim(),
+      // undefined y no "" : un campo vacío no debe llegar a Firestore, que además
+      // lo rechazaría por la lista blanca de las reglas.
+      phone: phone.trim() ? normalizeCRPhone(phone) : undefined,
       acceptedTerms: terms,
       product,
       employment: employment!,
@@ -244,6 +268,32 @@ export function CreditWizard() {
                   autoComplete="email"
                   className={inputBase}
                 />
+              </div>
+
+              {/*
+               * Opcional y encuadrado como WhatsApp, no como "teléfono": lo que
+               * frena a la gente no es dar el número, es imaginarse una llamada
+               * de venta. La nota de abajo desactiva justamente ese miedo.
+               */}
+              <div>
+                <label htmlFor="wz-phone" className="mb-1.5 block text-sm font-semibold text-ink">
+                  WhatsApp{" "}
+                  <span className="font-normal text-slate-400">· opcional</span>
+                </label>
+                <input
+                  id="wz-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="8888 8888"
+                  autoComplete="tel"
+                  className={inputBase}
+                />
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                  <MessageCircle className="size-3.5 shrink-0 text-accent-500" />
+                  Te escribimos por WhatsApp. No hacemos llamadas de venta.
+                </p>
               </div>
             </div>
 

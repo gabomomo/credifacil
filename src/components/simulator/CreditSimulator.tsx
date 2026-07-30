@@ -103,7 +103,9 @@ export function CreditSimulator({
   async function sendByEmail() {
     if (!lead) return;
     setSending(true);
-    const r = await submitLead({ ...lead, amount, months }, result, annualRate, "wizard");
+    const r = await submitLead({ ...lead, amount, months }, result, annualRate, "wizard", {
+      phone: lead.phone,
+    });
     setOutcome(r);
     setSending(false);
   }

@@ -147,6 +147,7 @@ export function ContactForm({ defaultProduct }: Props) {
             name="phone"
             type="tel"
             required
+            defaultValue={lead?.phone ?? ""}
             placeholder="8888 8888"
             autoComplete="tel"
             className={inputBase}

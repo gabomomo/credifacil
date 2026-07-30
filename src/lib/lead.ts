@@ -52,6 +52,11 @@ export const incomeOptions: { id: IncomeId; label: string }[] = [
 export interface Lead {
   name: string;
   email: string;
+  /**
+   * WhatsApp. Opcional a propósito: es el campo que más abandono provoca, y un
+   * lead sin teléfono sigue siendo contactable por correo.
+   */
+  phone?: string;
   /** El visitante marcó la casilla de tratamiento de datos. */
   acceptedTerms: boolean;
   product: ProductSlug;
@@ -162,6 +167,7 @@ export function formatLeadSummary(
     "",
     `Nombre: ${lead.name}`,
     `Correo: ${lead.email}`,
+    ...(lead.phone ? [`WhatsApp: ${lead.phone}`] : []),
     `Tipo de crédito: ${product ? `Crédito ${product.name}` : lead.product}`,
     `Situación laboral: ${labelFor(employmentOptions, lead.employment)}`,
     `Ingreso mensual: ${labelFor(incomeOptions, lead.income)}`,
