@@ -30,6 +30,7 @@ function validLead(over = {}) {
   return {
     name: "Ana Rojas",
     email: "ana@ejemplo.com",
+    phone: "8888 7777",
     product: "hipotecario",
     amount: 50_000_000,
     months: 240,
@@ -60,7 +61,7 @@ before(async () => {
     await setDoc(doc(db, "admins", EDITOR), { email: "e@x.cr", role: "editor", createdAt: Timestamp.now() });
     await setDoc(doc(db, "admins", VIEWER), { email: "v@x.cr", role: "viewer", createdAt: Timestamp.now() });
     await setDoc(doc(db, "leads", "lead-existente"), {
-      name: "Previo", email: "p@x.cr", product: "personal",
+      name: "Previo", email: "p@x.cr", phone: "8888 0000", product: "personal",
       amount: 1_000_000, months: 24, source: "contacto",
       status: "nuevo", createdAt: Timestamp.now(),
     });
@@ -140,6 +141,16 @@ test("rechaza correos con forma inválida y montos absurdos", async () => {
   await assertFails(addDoc(collection(anon(), "leads"), validLead({ email: "sin-arroba" })));
   await assertFails(addDoc(collection(anon(), "leads"), validLead({ amount: -5 })));
   await assertFails(addDoc(collection(anon(), "leads"), validLead({ months: 9999 })));
+});
+
+test("rechaza una solicitud SIN telefono (un lead sin contacto no sirve)", async () => {
+  const sinTelefono = validLead();
+  delete sinTelefono.phone;
+  await assertFails(addDoc(collection(anon(), "leads"), sinTelefono));
+});
+
+test("rechaza un telefono demasiado corto para ser real", async () => {
+  await assertFails(addDoc(collection(anon(), "leads"), validLead({ phone: "123" })));
 });
 
 test("rechaza una solicitud incompleta", async () => {

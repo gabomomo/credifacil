@@ -104,10 +104,12 @@ export function CreditWizard() {
   if (step === 0) {
     if (!name.trim()) stepErrors.push("Escribe tu nombre.");
     if (!isValidEmail(email)) stepErrors.push("Escribe un correo válido.");
-    // Vacío es válido: el campo es opcional. Solo se revisa lo que sí se escribió,
-    // para no castigar a quien decidió omitirlo.
-    if (phone.trim() && !isValidCRPhone(phone)) {
-      stepErrors.push("El WhatsApp debe tener 8 dígitos, o podés dejarlo en blanco.");
+    // Obligatorio, pero se distingue "no lo escribió" de "lo escribió mal": el
+    // segundo caso necesita un mensaje distinto para no parecer que no sirvió.
+    if (!phone.trim()) {
+      stepErrors.push("Escribe tu número de WhatsApp.");
+    } else if (!isValidCRPhone(phone)) {
+      stepErrors.push("El WhatsApp debe tener 8 dígitos (ej. 8888 8888).");
     }
     if (!terms) stepErrors.push("Debes aceptar el tratamiento de datos.");
   }
@@ -237,8 +239,8 @@ export function CreditWizard() {
               Empecemos por conocerte
             </h2>
             <p className="mt-2 text-ink-soft">
-              Con tu nombre y correo podemos enviarte la simulación y que un asesor te
-              acompañe. Sin costo ni compromiso.
+              Con estos datos te enviamos la simulación y un asesor te acompaña en el
+              trámite. Sin costo ni compromiso.
             </p>
 
             <div className="mt-6 grid gap-5">
@@ -271,14 +273,15 @@ export function CreditWizard() {
               </div>
 
               {/*
-               * Opcional y encuadrado como WhatsApp, no como "teléfono": lo que
-               * frena a la gente no es dar el número, es imaginarse una llamada
-               * de venta. La nota de abajo desactiva justamente ese miedo.
+               * Obligatorio: un lead sin teléfono no se puede gestionar. Se
+               * encuadra como WhatsApp y no como "teléfono" porque lo que frena
+               * a la gente no es dar el número, es imaginarse una llamada de
+               * venta. Al ser obligatorio, lo que baja la resistencia ya no es
+               * ofrecer omitirlo, sino decir para qué se usa.
                */}
               <div>
                 <label htmlFor="wz-phone" className="mb-1.5 block text-sm font-semibold text-ink">
-                  WhatsApp{" "}
-                  <span className="font-normal text-slate-400">· opcional</span>
+                  WhatsApp
                 </label>
                 <input
                   id="wz-phone"
@@ -290,9 +293,14 @@ export function CreditWizard() {
                   autoComplete="tel"
                   className={inputBase}
                 />
-                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-                  <MessageCircle className="size-3.5 shrink-0 text-accent-500" />
-                  Te escribimos por WhatsApp. No hacemos llamadas de venta.
+                <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500">
+                  <MessageCircle className="mt-0.5 size-3.5 shrink-0 text-accent-500" />
+                  <span>
+                    Es por donde te enviamos las condiciones y te acompaña el asesor.{" "}
+                    <span className="font-semibold text-ink-soft">
+                      Te escribimos, no te llamamos.
+                    </span>
+                  </span>
                 </p>
               </div>
             </div>

@@ -63,7 +63,11 @@ service cloud.firestore {
     function isValidLead(d) {
       // employment e income NO son obligatorios: quien llega directo a
       // /contacto sin pasar por el wizard no los declara.
-      return d.keys().hasAll(['name', 'email', 'product',
+      // phone es obligatorio: un lead sin telefono no se puede gestionar, asi
+      // que se rechaza en la base y no solo en el formulario. Que la regla de
+      // negocio viva aca evita que una via de entrada futura cuele leads
+      // inservibles sin que nadie se entere.
+      return d.keys().hasAll(['name', 'email', 'phone', 'product',
                               'amount', 'months', 'source', 'status', 'createdAt'])
         // Lista blanca de campos: nada fuera de esto entra.
         && d.keys().hasOnly(['name', 'email', 'phone', 'product', 'employment',
@@ -72,7 +76,7 @@ service cloud.firestore {
                              'createdAt'])
         && d.name is string && d.name.size() > 0 && d.name.size() <= 120
         && d.email is string && d.email.size() <= 200 && d.email.matches('.+@.+[.].+')
-        && d.get('phone', '') is string && d.get('phone', '').size() <= 40
+        && d.phone is string && d.phone.size() >= 8 && d.phone.size() <= 40
         && d.get('message', '') is string && d.get('message', '').size() <= 2000
         && d.product in ['hipotecario', 'personal', 'vehiculo', 'pyme']
         && d.get('employment', 'privado') in ['publico', 'privado', 'independiente']
