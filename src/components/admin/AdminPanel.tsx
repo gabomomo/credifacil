@@ -5,6 +5,7 @@ import { AlertTriangle, LogOut, Users, Inbox, Landmark, ShieldAlert } from "luci
 import { useAdminAuth, canEdit } from "@/lib/admin/useAdminAuth";
 import { roleLabels } from "@/lib/db/types";
 import { Button } from "@/components/ui/Button";
+import { LoginForm } from "@/components/admin/LoginForm";
 import { LeadsPanel } from "@/components/admin/LeadsPanel";
 import { CatalogPanel } from "@/components/admin/CatalogPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
@@ -27,7 +28,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 export function AdminPanel() {
-  const { state, signIn, logOut } = useAdminAuth();
+  const { state, signIn, resetPassword, logOut } = useAdminAuth();
   const [tab, setTab] = useState<Tab>("leads");
 
   if (state.status === "loading") {
@@ -63,17 +64,7 @@ export function AdminPanel() {
   if (state.status === "signed-out") {
     return (
       <Shell>
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-soft">
-          <h1 className="font-display text-2xl font-bold text-ink">
-            Panel de administración
-          </h1>
-          <p className="mt-3 text-ink-soft">
-            Iniciá sesión con la cuenta de Google autorizada.
-          </p>
-          <Button size="lg" className="mt-6 w-full" onClick={signIn}>
-            Entrar con Google
-          </Button>
-        </div>
+        <LoginForm signIn={signIn} resetPassword={resetPassword} />
       </Shell>
     );
   }
@@ -88,13 +79,12 @@ export function AdminPanel() {
           </h1>
           <p className="mt-3 leading-relaxed text-ink-soft">
             Iniciaste sesión como <strong>{state.user.email}</strong>, pero esa cuenta no
-            está autorizada.
+            tiene permisos asignados. Puede que se los hayan revocado, o que el alta haya
+            quedado a medias.
           </p>
           <p className="mt-4 text-sm text-ink-soft">
-            Pedile a un propietario que te dé acceso con este identificador:
+            Pedile a un propietario que revise tu acceso. Si necesita tu identificador:
           </p>
-          {/* El uid se muestra porque es justamente lo que un owner necesita
-              para otorgar el permiso desde la pestaña Usuarios. */}
           <code className="mt-2 block break-all rounded-xl bg-mist px-4 py-3 text-sm text-ink">
             {state.user.uid}
           </code>

@@ -95,3 +95,44 @@ export async function revokeAdmin(uid: string): Promise<void> {
   if (!db) return;
   await deleteDoc(doc(db, COLLECTION, uid));
 }
+
+/**
+ * Da de alta a una persona: crea la cuenta en Firebase Auth y su permiso en
+ * `admins`, en un solo paso.
+ *
+ * La cuenta se crea sobre una instancia secundaria de Firebase (ver
+ * `withSecondaryAuth`) porque `createUserWithEmailAndPassword` deja la sesión
+ * iniciada como el usuario nuevo: hacerlo sobre la instancia principal
+ * expulsaría de su sesión a quien está dando el alta.
+ *
+ * Si falla la escritura del permiso, la cuenta de Auth ya quedó creada y no se
+ * puede deshacer desde el cliente (borrar usuarios ajenos exige el Admin SDK,
+ * que necesita servidor). Por eso se avisa explícitamente en vez de fingir que
+ * no pasó nada: esa persona podrá iniciar sesión pero verá "sin acceso", y hay
+ * que reintentar el alta con el uid que se devuelve.
+ */
+export async function createAdminUser(data: {
+  email: string;
+  password: string;
+  displayName?: string;
+  role: AdminUser["role"];
+}): Promise<{ uid: string; permissionSaved: boolean }> {
+  const { withSecondaryAuth } = await import("@/lib/firebase");
+  const { createUserWithEmailAndPassword } = await import("firebase/auth");
+
+  const uid = await withSecondaryAuth(async (auth) => {
+    const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    return cred.user.uid;
+  });
+
+  try {
+    await saveAdmin(uid, {
+      email: data.email,
+      displayName: data.displayName,
+      role: data.role,
+    });
+    return { uid, permissionSaved: true };
+  } catch {
+    return { uid, permissionSaved: false };
+  }
+}

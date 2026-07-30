@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Trash2, Info } from "lucide-react";
-import { listAdmins, saveAdmin, revokeAdmin } from "@/lib/db/admins";
+import { listAdmins, createAdminUser, revokeAdmin } from "@/lib/db/admins";
+import { authErrorMessage } from "@/lib/admin/useAdminAuth";
 import { roleLabels, type AdminUser } from "@/lib/db/types";
 import { Button } from "@/components/ui/Button";
 
@@ -19,9 +20,12 @@ export function UsersPanel({ admin }: { admin: AdminUser }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uid, setUid] = useState("");
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AdminUser["role"]>("editor");
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
 
   const isOwner = admin.role === "owner";
 
@@ -48,14 +52,35 @@ export function UsersPanel({ admin }: { admin: AdminUser }) {
 
   async function grant(e: React.FormEvent) {
     e.preventDefault();
-    if (!uid.trim() || !email.trim()) return;
+    if (!email.trim() || password.length < 6) return;
+    setCreating(true);
+    setError(null);
+    setCreated(null);
     try {
-      await saveAdmin(uid.trim(), { email: email.trim(), role });
-      setUid("");
-      setEmail("");
-      load();
+      const r = await createAdminUser({
+        email: email.trim(),
+        password,
+        displayName: displayName.trim() || undefined,
+        role,
+      });
+      if (r.permissionSaved) {
+        setCreated(email.trim());
+        setEmail("");
+        setDisplayName("");
+        setPassword("");
+        load();
+      } else {
+        // La cuenta existe pero el permiso no se guardó: hay que decirlo, no
+        // dejar a alguien con una cuenta que no sirve y sin explicación.
+        setError(
+          `Se creó la cuenta de ${email.trim()} (uid ${r.uid}) pero no se pudo guardar ` +
+            "su permiso. Volvé a intentarlo o asignalo desde la consola de Firebase.",
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo otorgar el acceso");
+      setError(authErrorMessage(err));
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -131,25 +156,64 @@ export function UsersPanel({ admin }: { admin: AdminUser }) {
           onSubmit={grant}
           className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft"
         >
-          <h2 className="font-display text-xl font-bold text-ink">Dar acceso</h2>
+          <h2 className="font-display text-xl font-bold text-ink">Crear usuario</h2>
           <div className="mt-3 flex items-start gap-2 rounded-xl bg-mist px-4 py-3 text-sm text-ink-soft">
             <Info className="mt-0.5 size-4 shrink-0 text-brand-600" />
             <span>
-              La persona debe iniciar sesión primero en <code>/admin</code>. Ahí verá su
-              identificador de usuario; pediéselo y pegalo acá.
+              Se crea la cuenta y su permiso en un solo paso. Pasale la contraseña por un
+              canal seguro; puede cambiarla desde <em>“Olvidé mi contraseña”</em> en la
+              pantalla de acceso.
             </span>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <label className="text-sm sm:col-span-2">
-              <span className="mb-1 block font-medium text-ink">Identificador (uid)</span>
+          {created && (
+            <p className="mt-4 rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-700">
+              Usuario <strong>{created}</strong> creado. Ya puede entrar al panel.
+            </p>
+          )}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink">Correo</span>
               <input
+                type="email"
                 className={input}
-                value={uid}
-                onChange={(e) => setUid(e.target.value)}
-                placeholder="Ej. K2mXp9..."
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="persona@credifacil.cr"
+                autoComplete="off"
                 required
               />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink">Nombre (opcional)</span>
+              <input
+                className={input}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Ana Rojas"
+                autoComplete="off"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink">
+                Contraseña provisional
+              </span>
+              <input
+                type="text"
+                className={input}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoComplete="off"
+                minLength={6}
+                required
+              />
+              {password.length > 0 && password.length < 6 && (
+                <span className="mt-1 block text-xs text-red-600">
+                  Faltan {6 - password.length} caracteres
+                </span>
+              )}
             </label>
             <label className="text-sm">
               <span className="mb-1 block font-medium text-ink">Rol</span>
@@ -163,20 +227,9 @@ export function UsersPanel({ admin }: { admin: AdminUser }) {
                 ))}
               </select>
             </label>
-            <label className="text-sm sm:col-span-3">
-              <span className="mb-1 block font-medium text-ink">Correo</span>
-              <input
-                type="email"
-                className={input}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="persona@ejemplo.com"
-                required
-              />
-            </label>
           </div>
-          <Button type="submit" size="sm" className="mt-4">
-            Otorgar acceso
+          <Button type="submit" size="sm" className="mt-4" disabled={creating}>
+            {creating ? "Creando…" : "Crear usuario"}
           </Button>
         </form>
       ) : (

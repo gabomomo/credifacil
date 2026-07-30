@@ -74,7 +74,8 @@ solicitudes, el panel `/admin` y la tasa ponderada.
    proyecto**. Podés desactivar Google Analytics.
 2. **Compilación → Firestore Database → Crear base de datos**. Elegí la ubicación
    `nam5` (o la más cercana) y **modo de producción** (las reglas de este repo lo cubren).
-3. **Compilación → Authentication → Comenzar → Google** y activalo.
+3. **Compilación → Authentication → Comenzar → Correo/Contraseña** y activalo. (Dejá
+   *"Vínculo del correo electrónico"* desactivado; no se usa.)
 4. **⚙ Configuración del proyecto → Tus apps → Web (`</>`)**. Registrá la app y copiá el
    bloque `firebaseConfig`.
 
@@ -100,7 +101,8 @@ que volver a desplegar (un push a `main`, o **Actions → Deploy to GitHub Pages
 workflow**). Si no existen, el build no falla: el sitio sigue con tasas de ejemplo.
 
 ⚠️ En **Authentication → Settings → Dominios autorizados** agregá `gabomomo.github.io`, o
-el login con Google fallará en el sitio publicado (en `localhost` funciona por defecto).
+el restablecimiento de contraseña fallará en el sitio publicado (en `localhost` funciona
+por defecto).
 
 ### 3. Publicar las reglas de seguridad
 
@@ -115,16 +117,25 @@ npx firebase deploy --only firestore:rules
 
 ### 4. Crear el primer administrador
 
-Las reglas exigen ser `owner` para otorgar accesos, así que el primer registro va a mano:
+Las reglas exigen ser `owner` para dar de alta a alguien, así que el primer usuario va a
+mano. Solo este; los demás se crean desde el panel.
 
-1. Entrá a `/admin` y hacé login con Google. Vas a ver *"Tu cuenta no tiene acceso"* y,
-   debajo, **tu identificador de usuario (uid)**. Copialo.
-2. En la consola de Firebase → **Firestore Database → Iniciar colección**:
+1. Consola → **Authentication → Users → Agregar usuario**. Poné tu correo y una
+   contraseña. Copiá el **UID** que aparece en la lista.
+2. Consola → **Firestore Database → Iniciar colección**:
    - Colección: `admins`
-   - ID del documento: **el uid que copiaste**
+   - ID del documento: **el UID del paso 1**
    - Campos: `email` (string, tu correo), `role` (string, `owner`),
      `createdAt` (timestamp, ahora)
-3. Recargá `/admin`. Desde ahí ya podés dar acceso a otras personas.
+3. Entrá a `/admin` con ese correo y contraseña.
+
+A partir de ahí, en la pestaña **Usuarios** creás al resto: cuenta y permiso en un solo
+paso, sin pasar por la consola.
+
+> El alta usa una instancia secundaria de Firebase. Suena rebuscado, pero
+> `createUserWithEmailAndPassword` deja la sesión iniciada como el usuario recién creado:
+> sin ese aparte, dar de alta a alguien te expulsaría de tu propia sesión. Está cubierto
+> por `npm run test:auth`, con un contraejemplo que demuestra el problema.
 
 ### 5. Cargar las instituciones
 
@@ -157,6 +168,7 @@ clientes.
 ```bash
 npm test           # 14 casos del ponderado (no necesita nada más)
 npm run test:rules # 28 casos de las reglas de seguridad (requiere Java)
+npm run test:auth  #  5 casos del alta de usuarios      (requiere Java)
 ```
 
 `test:rules` levanta el emulador de Firestore y **ataca las reglas**: intenta leer

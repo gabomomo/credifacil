@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut,
   type User,
 } from "firebase/auth";
@@ -63,10 +63,17 @@ export function useAdminAuth() {
     };
   }, [configured]);
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const auth = getFirebaseAuth();
-    if (!auth) return;
-    await signInWithPopup(auth, new GoogleAuthProvider());
+    if (!auth) throw new Error("Firebase no está configurado");
+    await signInWithEmailAndPassword(auth, email, password);
+  }, []);
+
+  /** Envía el correo de restablecimiento a quien olvidó su contraseña. */
+  const resetPassword = useCallback(async (email: string) => {
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase no está configurado");
+    await sendPasswordResetEmail(auth, email);
   }, []);
 
   const logOut = useCallback(async () => {
@@ -75,7 +82,41 @@ export function useAdminAuth() {
     await signOut(auth);
   }, []);
 
-  return { state, signIn, logOut };
+  return { state, signIn, resetPassword, logOut };
+}
+
+/**
+ * Traduce los códigos de Firebase Auth a algo legible.
+ *
+ * En el inicio de sesión se responde lo mismo ante usuario inexistente y
+ * contraseña incorrecta: distinguirlos le confirmaría a un desconocido qué
+ * correos tienen cuenta en el panel.
+ */
+export function authErrorMessage(error: unknown): string {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code: unknown }).code)
+      : "";
+
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/invalid-email":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Correo o contraseña incorrectos.";
+    case "auth/too-many-requests":
+      return "Demasiados intentos fallidos. Esperá unos minutos.";
+    case "auth/email-already-in-use":
+      return "Ya existe un usuario con ese correo.";
+    case "auth/weak-password":
+      return "La contraseña debe tener al menos 6 caracteres.";
+    case "auth/network-request-failed":
+      return "Sin conexión. Revisá tu red.";
+    case "auth/operation-not-allowed":
+      return "Falta activar el proveedor Correo/Contraseña en la consola de Firebase.";
+    default:
+      return "No se pudo completar la operación. Intentá de nuevo.";
+  }
 }
 
 /** Los roles que pueden modificar datos. `viewer` queda en solo lectura. */

@@ -11,7 +11,7 @@
  * cae al envío por correo. El sitio nunca debe romperse por falta de backend.
  */
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { initializeApp, getApps, deleteApp, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 
@@ -55,4 +55,27 @@ export function getFirebaseAuth(): Auth | null {
   if (!a) return null;
   auth ??= getAuth(a);
   return auth;
+}
+
+/**
+ * Ejecuta `fn` sobre una instancia de Firebase APARTE, con su propia sesión.
+ *
+ * Existe por una particularidad de Firebase Auth: crear un usuario con
+ * `createUserWithEmailAndPassword` deja la sesión iniciada como ESE usuario. Si
+ * se hiciera sobre la instancia principal, el administrador que da de alta a
+ * alguien quedaría expulsado de su propia sesión en el acto.
+ *
+ * La instancia secundaria se destruye al terminar, pase lo que pase.
+ */
+export async function withSecondaryAuth<T>(fn: (auth: Auth) => Promise<T>): Promise<T> {
+  if (!isFirebaseConfigured()) throw new Error("Firebase no está configurado");
+
+  // El nombre debe ser único: dos altas seguidas no pueden chocar entre sí.
+  const name = `alta-${Math.random().toString(36).slice(2)}`;
+  const secondary = initializeApp(config as Required<typeof config>, name);
+  try {
+    return await fn(getAuth(secondary));
+  } finally {
+    await deleteApp(secondary);
+  }
 }
