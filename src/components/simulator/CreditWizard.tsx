@@ -7,12 +7,13 @@ import { products, type ProductSlug } from "@/lib/products";
 import {
   employmentOptions,
   incomeOptions,
+  persistLead,
   saveLead,
   type EmploymentId,
   type IncomeId,
   type Lead,
 } from "@/lib/lead";
-import { formatCRC, formatTerm } from "@/lib/simulator";
+import { calculateLoan, formatCRC, formatTerm } from "@/lib/simulator";
 import { CreditSimulator } from "@/components/simulator/CreditSimulator";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -142,8 +143,28 @@ export function CreditWizard() {
     }
     setTried(false);
     if (step === STEPS.length - 1) {
-      saveLead(buildLead());
+      const lead = buildLead();
+      saveLead(lead);
       setDone(true);
+
+      /*
+       * La solicitud queda guardada en cuanto termina el wizard: a partir de
+       * acá el lead existe aunque la persona cierre la pestaña sin pulsar nada
+       * más. No se espera (`await`) a propósito — la cuota se muestra al
+       * instante y el guardado ocurre por detrás. Si falla, tampoco se avisa:
+       * la persona vino a ver su cuota, y los botones del simulador seguirán
+       * pudiendo enviar la solicitud por correo.
+       *
+       * La cuota se calcula con la tasa de ejemplo del producto; si el
+       * simulador luego resuelve una tasa ponderada, el documento se completa
+       * al enviar.
+       */
+      const result = calculateLoan({
+        amount: lead.amount,
+        annualRate: selected.exampleRate,
+        months: lead.months,
+      });
+      void persistLead(lead, result, selected.exampleRate);
       return;
     }
     setStep((s) => s + 1);

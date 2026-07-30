@@ -104,6 +104,46 @@ export async function updateLead(
   await updateDoc(doc(db, COLLECTION, id), changes);
 }
 
+/** Campos que el propio visitante puede completar sobre su solicitud. */
+export type LeadCompletion = Partial<
+  Pick<
+    StoredLead,
+    | "phone" | "message" | "amount" | "months"
+    | "monthlyPayment" | "annualRate" | "product" | "employment" | "income"
+  >
+>;
+
+/**
+ * Completa una solicitud ya guardada, desde el sitio público.
+ *
+ * Se usa cuando la persona afina el monto en el simulador o agrega un mensaje
+ * en el formulario: sin esto habría que crear un documento por cada paso y el
+ * panel se llenaría de duplicados de la misma persona.
+ *
+ * Las reglas solo lo permiten mientras `status` siga en 'nuevo' y únicamente
+ * sobre estos campos. Devuelve false si Firestore lo rechaza —por ejemplo,
+ * porque un asesor ya tomó la solicitud— para que quien llama decida qué hacer.
+ */
+export async function completeLead(id: string, changes: LeadCompletion): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+
+  // Firestore rechaza undefined y las reglas usan lista blanca: se envía
+  // solo lo que tiene valor.
+  const payload: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(changes)) {
+    if (v !== undefined && v !== "") payload[k] = v;
+  }
+  if (Object.keys(payload).length === 0) return true;
+
+  try {
+    await updateDoc(doc(db, COLLECTION, id), payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function deleteLead(id: string): Promise<void> {
   const db = getDb();
   if (!db) return;

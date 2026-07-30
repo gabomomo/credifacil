@@ -51,9 +51,42 @@ service cloud.firestore {
       // esto, la colección es un buzón abierto para basura de cualquier tamaño.
       allow create: if isValidLead(request.resource.data);
 
-      // Solo el panel gestiona el estado y las notas internas.
-      allow update: if canEdit();
+      // El panel gestiona estado y notas internas...
+      allow update: if canEdit() || isOwnLeadCompletion();
       allow delete: if hasRole('owner');
+    }
+
+    /*
+     * ...y el propio visitante puede completar SU solicitud mientras nadie la
+     * haya tocado. Existe porque el lead se guarda al terminar el wizard, y
+     * despues la persona todavia puede afinar el monto o agregar un mensaje: sin
+     * esto habria que crear un documento nuevo en cada paso y el panel se
+     * llenaria de duplicados de la misma persona.
+     *
+     * Tres cosas lo acotan:
+     *  - Hay que conocer el id del documento, que es aleatorio y solo tiene
+     *    quien lo creo. No se puede listar la coleccion para descubrirlo.
+     *  - Solo se pueden tocar los campos de la propia solicitud. status y notes
+     *    quedan fuera: son del panel.
+     *  - Solo mientras status siga en 'nuevo'. Apenas un asesor la gestiona, el
+     *    documento queda congelado para el visitante.
+     */
+    function isOwnLeadCompletion() {
+      return resource.data.status == 'nuevo'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['phone', 'message', 'amount', 'months', 'monthlyPayment',
+                       'annualRate', 'product', 'employment', 'income'])
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 8
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.get('message', '') is string
+        && request.resource.data.get('message', '').size() <= 2000
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.amount <= 1000000000
+        && request.resource.data.months is number
+        && request.resource.data.months > 0
+        && request.resource.data.months <= 480;
     }
 
     // Los campos opcionales se leen con d.get(clave, valorPorDefecto) en vez de

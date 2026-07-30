@@ -69,6 +69,29 @@ export interface Lead {
 }
 
 const STORAGE_KEY = "credifacil:lead";
+/**
+ * Id del documento ya creado en Firestore. Vive aparte del lead porque su
+ * función es distinta: evitar que un mismo visitante genere varias solicitudes
+ * duplicadas al avanzar por el sitio.
+ */
+const LEAD_ID_KEY = "credifacil:leadId";
+
+export function saveLeadId(id: string): void {
+  try {
+    sessionStorage.setItem(LEAD_ID_KEY, id);
+  } catch {
+    // Sin sessionStorage se perdería la referencia y una segunda acción
+    // crearía otro documento. Es degradado aceptable: nunca se pierde el lead.
+  }
+}
+
+export function loadLeadId(): string | null {
+  try {
+    return sessionStorage.getItem(LEAD_ID_KEY);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Guarda el lead para que sobreviva a la navegación entre /simulador y
@@ -100,8 +123,64 @@ export function loadLead(): Lead | null {
 export function clearLead(): void {
   try {
     sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(LEAD_ID_KEY);
   } catch {
     // Nada que hacer.
+  }
+}
+
+/**
+ * Guarda la solicitud al terminar el wizard.
+ *
+ * Se llama al pulsar "Ver mi cuota": a partir de ahí el lead ya está en la base
+ * aunque la persona no haga nada más. Si Firebase no está configurado o la
+ * escritura falla, no se avisa en pantalla —la persona vino a ver su cuota, no
+ * a que le informen del backend— pero se devuelve null para que quien llama
+ * sepa que después habrá que recurrir al correo.
+ */
+export async function persistLead(
+  lead: Lead,
+  result: { monthlyPayment: number },
+  annualRate: number,
+): Promise<string | null> {
+  if (!isFirebaseConfigured()) return null;
+  try {
+    const { createLead, completeLead } = await import("@/lib/db/leads");
+
+    // Rehacer el wizard con "Cambiar mis datos" no debe generar una segunda
+    // solicitud de la misma persona: si ya hay documento, se actualiza.
+    const existing = loadLeadId();
+    if (existing) {
+      await completeLead(existing, {
+        phone: lead.phone,
+        amount: lead.amount,
+        months: lead.months,
+        monthlyPayment: result.monthlyPayment,
+        annualRate,
+        product: lead.product,
+        employment: lead.employment,
+        income: lead.income,
+      });
+      return existing;
+    }
+
+    const id = await createLead({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      product: lead.product,
+      employment: lead.employment,
+      income: lead.income,
+      amount: lead.amount,
+      months: lead.months,
+      monthlyPayment: result.monthlyPayment,
+      annualRate,
+      source: "wizard",
+    });
+    if (id) saveLeadId(id);
+    return id;
+  } catch {
+    return null;
   }
 }
 
@@ -199,8 +278,12 @@ export function openLeadEmail(
 }
 
 export type SubmitOutcome =
-  /** Guardado en Firestore: queda en el panel. */
-  | { kind: "saved" }
+  /**
+   * Guardado en Firestore: queda en el panel. `updated` es false cuando la
+   * solicitud ya existía pero no se pudo completar (normalmente porque un
+   * asesor ya la tomó); el lead está a salvo igual.
+   */
+  | { kind: "saved"; updated?: boolean }
   /** Sin Firebase o con fallo al guardar: se abrió el correo. */
   | { kind: "emailed" }
   | { kind: "error"; message: string };
@@ -229,7 +312,28 @@ export async function submitLead(
   }
 
   try {
-    const { createLead } = await import("@/lib/db/leads");
+    const { createLead, completeLead } = await import("@/lib/db/leads");
+
+    // Si el wizard ya creó la solicitud, se COMPLETA. Crear otra dejaría a la
+    // misma persona dos veces en el panel, una por cada botón que pulse.
+    const existing = loadLeadId();
+    if (existing) {
+      const ok = await completeLead(existing, {
+        phone: extra?.phone ?? lead.phone,
+        message: extra?.message,
+        amount: lead.amount,
+        months: lead.months,
+        monthlyPayment: result.monthlyPayment,
+        annualRate,
+        product: lead.product,
+        employment: lead.employment,
+        income: lead.income,
+      });
+      // Un rechazo aquí suele significar que un asesor ya tomó la solicitud:
+      // está guardada igual, así que se informa como guardada.
+      return { kind: "saved", updated: ok };
+    }
+
     const id = await createLead({
       name: lead.name,
       email: lead.email,
@@ -244,7 +348,10 @@ export async function submitLead(
       message: extra?.message,
       source,
     });
-    if (id) return { kind: "saved" };
+    if (id) {
+      saveLeadId(id);
+      return { kind: "saved" };
+    }
     openLeadEmail(lead, result);
     return { kind: "emailed" };
   } catch {

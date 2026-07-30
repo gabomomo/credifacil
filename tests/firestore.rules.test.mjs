@@ -164,6 +164,52 @@ test("un anónimo no puede modificar ni borrar solicitudes", async () => {
   await assertFails(deleteDoc(doc(anon(), "leads", "lead-existente")));
 });
 
+// ---------- Completar la propia solicitud desde el sitio publico ----------
+
+test("el visitante puede completar su solicitud (afinar monto, agregar mensaje)", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertSucceeds(updateDoc(doc(anon(), "leads", ref.id), {
+    amount: 75_000_000, months: 300, message: "Quiero comprar casa usada",
+    phone: "8888 7777",
+  }));
+});
+
+test("NO puede ascender su propia solicitud a otro estado", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { status: "cerrado" }));
+});
+
+test("NO puede escribir notas internas al completar", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { notes: "nota falsa" }));
+});
+
+test("NO puede reescribir el nombre ni el correo de una solicitud", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { name: "Otro" }));
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { email: "otro@x.cr" }));
+});
+
+test("NO puede dejar la solicitud sin telefono al completarla", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { phone: "" }));
+});
+
+test("NO puede tocar una solicitud que un asesor ya gestiono", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  // El asesor la toma...
+  await assertSucceeds(updateDoc(doc(as(EDITOR), "leads", ref.id), { status: "contactado" }));
+  // ...y desde ahi el visitante ya no la modifica.
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { amount: 1_000_000 }));
+});
+
+test("NO puede colar valores absurdos al completar", async () => {
+  const ref = await addDoc(collection(anon(), "leads"), validLead());
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { amount: -1 }));
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { months: 9999 }));
+  await assertFails(updateDoc(doc(anon(), "leads", ref.id), { message: "x".repeat(5000) }));
+});
+
 test("un viewer no puede modificar (es solo lectura)", async () => {
   await assertFails(updateDoc(doc(as(VIEWER), "leads", "lead-existente"), { status: "cerrado" }));
 });
