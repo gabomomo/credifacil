@@ -279,13 +279,18 @@ const handler = {
       }),
     });
 
+    // El detalle de Brevo se registra pero NUNCA se devuelve al navegador:
+    // puede incluir información de la cuenta.
+    const detalle = await res.text();
+
     if (!res.ok) {
-      // El detalle de Brevo se registra pero no se devuelve: puede incluir
-      // información de la cuenta que no tiene por qué llegar al navegador.
-      console.error("Brevo respondió", res.status, await res.text());
+      console.error("Brevo rechazó:", res.status, detalle);
       return json({ error: "No se pudo enviar el correo" }, 502, cors);
     }
 
+    // Se registra el messageId para poder rastrear un envío concreto en los
+    // registros de Brevo cuando alguien reporte que no le llegó.
+    console.log("Brevo aceptó:", res.status, detalle, "→", check.data.email);
     return json({ ok: true }, 200, cors);
   },
 };
