@@ -12,11 +12,13 @@
     "ALLOWED_ORIGINS": "https://gabomomo.github.io,http://localhost:3000",
     "SITE_NAME": "Credifácil",
     "SITE_URL": "https://gabomomo.github.io/credifacil/",
-    // ⚠️ PROVISIONAL. Debe ser un remitente VERIFICADO en Brevo o los envíos
-    // fallan, y el dominio credifacil.cr todavía no está en tu poder. Mientras
-    // tanto va una dirección que sí controlás y podés verificar. Cambiala por
-    // hola@credifacil.cr cuando tengas el dominio y lo verifiques en Brevo.
-    "SENDER_EMAIL": "gmonestel@gmail.com"
+    // ⚠️ PROVISIONAL, hasta tener el dominio credifacil.cr.
+    //
+    // Tiene que ser un remitente VERIFICADO en Brevo. Si no lo está, Brevo
+    // acepta la llamada a la API y devuelve un messageId, pero después rechaza
+    // el envío: el fallo no aparece en la respuesta, solo en sus registros.
+    // Verificar en: Senders, Domains & Dedicated IPs → Senders.
+    "SENDER_EMAIL": "contacto@momostudio.app"
   },
 
   // Límite por IP.
