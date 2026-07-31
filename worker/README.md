@@ -30,47 +30,45 @@ Es un endpoint público, así que:
 
 `npm test` cubre estas cuatro capas con 18 casos, la mayoría intentando saltarlas.
 
-## Configurar
+## Estado
 
-### 1. Brevo
+Ya desplegado en `https://credifacil-email.innovomedia-account.workers.dev`,
+con el KV del límite creado y el sitio apuntando ahí (`.env.local` y el secret
+del repositorio).
 
-1. Creá la cuenta en [brevo.com](https://www.brevo.com) — el plan gratis da 300
-   correos por día.
-2. **Verificá el remitente**: *Senders, Domains & Dedicated IPs → Senders*. Sin un
-   remitente verificado los envíos fallan.
-3. Generá la clave en *SMTP & API → API Keys*. Es la **API key**, no la SMTP key.
+**Falta un solo paso: la clave de Brevo.** Sin ella el Worker responde 502 y el
+sitio cae al cliente de correo del visitante.
 
-### 2. Cloudflare
+## Lo que falta hacer
+
+### 1. Verificar el remitente en Brevo
+
+*Senders, Domains & Dedicated IPs → Senders*. Sin un remitente verificado, Brevo
+rechaza los envíos.
+
+`SENDER_EMAIL` en `wrangler.jsonc` está en `gmonestel@gmail.com` como
+**provisional**, porque el dominio `credifacil.cr` todavía no está disponible.
+Cuando lo tengas, verificá el dominio en Brevo y cambiá ese valor.
+
+### 2. Cargar la clave
+
+En *SMTP & API → API Keys* generá una **API key** (no la SMTP key) y:
 
 ```bash
 cd worker
-npm install
-npx wrangler login
-
-# Límite por IP (opcional pero recomendado):
-npx wrangler kv namespace create RATE_LIMIT_KV
-# → pegá el id que devuelve en wrangler.jsonc
-
-npx wrangler secret put BREVO_API_KEY   # pega la clave cuando lo pida
+npx wrangler secret put BREVO_API_KEY   # pega la clave cuando la pida
 npx wrangler deploy
 ```
 
-El despliegue imprime la URL del Worker, algo como
-`https://credifacil-email.<tu-cuenta>.workers.dev`.
+> El comando pide la clave por consola y la guarda cifrada en Cloudflare. **No la
+> pegues en un archivo del repositorio ni la compartas por chat**: a diferencia
+> de la configuración de Firebase, que es pública por diseño, esta clave permite
+> enviar correos en tu nombre.
 
-Revisá en `wrangler.jsonc` que `SENDER_EMAIL` sea el remitente que verificaste y
-que `ALLOWED_ORIGINS` incluya tu dominio.
+### Si cambia la URL del Worker
 
-### 3. Conectar el sitio
-
-En la raíz del proyecto, en `.env.local`:
-
-```
-NEXT_PUBLIC_EMAIL_ENDPOINT=https://credifacil-email.<tu-cuenta>.workers.dev
-```
-
-Y como *secret* del repositorio en GitHub (**Settings → Secrets and variables →
-Actions**) con el mismo nombre, para que el sitio publicado también lo tenga.
+Actualizá `NEXT_PUBLIC_EMAIL_ENDPOINT` en `.env.local` y el secret homónimo del
+repositorio (**Settings → Secrets and variables → Actions**).
 
 ## Si no está configurado
 

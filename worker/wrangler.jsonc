@@ -12,17 +12,18 @@
     "ALLOWED_ORIGINS": "https://gabomomo.github.io,http://localhost:3000",
     "SITE_NAME": "Credifácil",
     "SITE_URL": "https://gabomomo.github.io/credifacil/",
-    // Debe ser un remitente verificado en Brevo, o los envíos fallan.
-    "SENDER_EMAIL": "hola@credifacil.cr"
+    // ⚠️ PROVISIONAL. Debe ser un remitente VERIFICADO en Brevo o los envíos
+    // fallan, y el dominio credifacil.cr todavía no está en tu poder. Mientras
+    // tanto va una dirección que sí controlás y podés verificar. Cambiala por
+    // hola@credifacil.cr cuando tengas el dominio y lo verifiques en Brevo.
+    "SENDER_EMAIL": "gmonestel@gmail.com"
   },
 
-  // Límite por IP. Sin este KV el Worker funciona, pero sin límite:
-  //   npx wrangler kv namespace create RATE_LIMIT_KV
-  // y pegar acá el id que devuelve.
+  // Límite por IP.
   "kv_namespaces": [
     {
       "binding": "RATE_LIMIT_KV",
-      "id": "PENDIENTE_CREAR"
+      "id": "07401db2413f4a3bab539f24545bd61c"
     }
   ],
 
