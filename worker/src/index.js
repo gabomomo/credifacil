@@ -290,7 +290,12 @@ const handler = {
 
     // Se registra el messageId para poder rastrear un envío concreto en los
     // registros de Brevo cuando alguien reporte que no le llegó.
-    console.log("Brevo aceptó:", res.status, detalle, "→", check.data.email);
+    console.log(
+      "Brevo aceptó:",
+      res.status,
+      detalle,
+      `de ${env.SENDER_EMAIL} → ${check.data.email}`,
+    );
     return json({ ok: true }, 200, cors);
   },
 };
