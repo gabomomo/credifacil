@@ -36,7 +36,7 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-t from-brand-950/55 via-transparent to-transparent" />
       </div>
 
-      <div className="container-x relative z-10 grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-24">
+      <div className="container-x relative z-10 grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-24">
         {/* Columna de texto. En móvil va primero: es lo que explica el sitio. */}
         <div className="text-center lg:text-left">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur-sm">
@@ -103,12 +103,22 @@ export function Hero() {
          * La sombra sí hace falta: sin ella la familia se pierde entre los
          * edificios del fondo.
          */}
-        <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
+        {/*
+         * Se agranda con scale y no quitándole ancho a la columna de texto:
+         * al estrecharla, los botones del CTA se partían en dos líneas. El
+         * excedente cae en el espacio entre columnas y en el margen del
+         * contenedor, así que no desborda ni recorta.
+         *
+         * El aumento va por tramos: justo en lg (1024px) las columnas son
+         * estrechas y un 125% se montaba sobre el texto. A partir de xl hay
+         * espacio de sobra.
+         */}
+        <div className="relative mx-auto w-full max-w-xl lg:max-w-none lg:scale-105 xl:scale-125">
           <Image
             src={familyImg}
-            alt="Un asesor de Credifácil acompañando a una familia a elegir su crédito"
+            alt="Una familia eligiendo su crédito desde la computadora de su casa"
             priority
-            sizes="(min-width: 1024px) 45vw, 90vw"
+            sizes="(min-width: 1024px) 55vw, 95vw"
             className="w-full [filter:drop-shadow(0_18px_28px_rgba(15,20,45,0.45))]"
           />
         </div>
