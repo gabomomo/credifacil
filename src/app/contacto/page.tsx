@@ -35,12 +35,14 @@ export default function ContactoPage() {
       <section className="py-16">
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_1.4fr]">
           <div>
-            <div className="relative mb-6 aspect-square w-full max-w-[15rem]">
+            {/* Centrada dentro de su columna; el texto de abajo sigue alineado
+                a la izquierda para no romper la lectura. */}
+            <div className="relative mx-auto mb-8 aspect-square w-full max-w-sm">
               <div className="absolute inset-[6%] rounded-full bg-gradient-to-br from-brand-50 to-accent-50" />
               <Image
                 src={asesorImg}
                 alt="Asesor de Credifácil con audífonos, listo para atender"
-                sizes="240px"
+                sizes="(min-width: 640px) 384px, 90vw"
                 className="relative size-full object-contain"
               />
             </div>
