@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import heroImg from "@/assets/hero.png";
+import heroImg from "@/assets/hero.webp";
 import familyImg from "@/assets/family.webp";
 import { ShieldCheck, Clock, HandCoins, ArrowRight } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
@@ -31,9 +31,20 @@ export function Hero() {
           sizes="100vw"
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-brand-950/45" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-950/80 via-brand-950/45 to-brand-950/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-950/55 via-transparent to-transparent" />
+        {/*
+         * El velo se reparte distinto según el ancho, y no es un capricho:
+         * en móvil el texto va centrado y ocupa todo el ancho, así que un
+         * degradado lateral lo deja con la mitad derecha sobre cielo claro
+         * (medido: 3:1 de contraste, por debajo del mínimo legible). Ahí el
+         * velo tiene que ser parejo.
+         *
+         * En escritorio el texto vive solo en la columna izquierda, así que el
+         * velo se concentra ahí y la derecha se abre para no apagar el cielo,
+         * que es lo que le da vida a la ilustración.
+         */}
+        <div className="absolute inset-0 bg-brand-950/64 lg:bg-brand-950/12" />
+        <div className="absolute inset-0 lg:bg-gradient-to-r lg:from-brand-950/85 lg:via-brand-950/40 lg:to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-950/35 via-transparent to-transparent" />
       </div>
 
       <div className="container-x relative z-10 grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-24">
