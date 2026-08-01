@@ -48,3 +48,9 @@ ui-debug.log
 # Dependencias del Worker
 worker/node_modules
 worker/.wrangler
+
+# Ilustraciones originales de las tarjetas de producto.
+# El sitio usa las versiones optimizadas de src/assets/productos (56 KB vs 5.4 MB).
+# Se dejan fuera del repositorio para no cargar el historial con archivos que
+# nadie compila; si hace falta re-exportarlas, estan en la maquina.
+use/
