@@ -106,7 +106,7 @@ export function Hero() {
         <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
           <Image
             src={familyImg}
-            alt="Una familia comparando opciones de crédito desde su casa"
+            alt="Un asesor de Credifácil acompañando a una familia a elegir su crédito"
             priority
             sizes="(min-width: 1024px) 45vw, 90vw"
             className="w-full [filter:drop-shadow(0_18px_28px_rgba(15,20,45,0.45))]"
