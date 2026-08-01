@@ -1,5 +1,6 @@
+import Image from "next/image";
 import { CheckCircle2 } from "lucide-react";
-import { AdvisorScene } from "@/components/illustrations/Scenes";
+import asesorImg from "@/assets/asesor.webp";
 import { ButtonLink } from "@/components/ui/Button";
 import { HandNote } from "@/components/ui/Doodles";
 
@@ -14,8 +15,21 @@ export function AdvisorBand() {
   return (
     <section className="py-20 sm:py-24">
       <div className="container-x grid items-center gap-10 lg:grid-cols-2">
+        {/*
+         * La ilustración es cuadrada y con fondo transparente, así que se apoya
+         * sobre un círculo de marca: sin él flota en el blanco de la sección y
+         * pierde peso frente a la columna de texto.
+         */}
         <div className="relative order-2 lg:order-1">
-          <AdvisorScene className="mx-auto w-full max-w-md" />
+          <div className="relative mx-auto aspect-square w-full max-w-sm">
+            <div className="absolute inset-[6%] rounded-full bg-gradient-to-br from-brand-50 to-accent-50" />
+            <Image
+              src={asesorImg}
+              alt="Asesor de Credifácil con audífonos, listo para atender"
+              sizes="(min-width: 1024px) 40vw, 80vw"
+              className="relative size-full object-contain"
+            />
+          </div>
         </div>
 
         <div className="order-1 lg:order-2">

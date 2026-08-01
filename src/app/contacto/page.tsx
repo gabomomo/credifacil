@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { MessageCircle, Phone, Mail, Clock } from "lucide-react";
 import { ContactForm } from "@/components/forms/ContactForm";
-import { AdvisorScene } from "@/components/illustrations/Scenes";
+import Image from "next/image";
+import asesorImg from "@/assets/asesor.webp";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -34,7 +35,15 @@ export default function ContactoPage() {
       <section className="py-16">
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_1.4fr]">
           <div>
-            <AdvisorScene className="mb-6 w-full max-w-xs" />
+            <div className="relative mb-6 aspect-square w-full max-w-[15rem]">
+              <div className="absolute inset-[6%] rounded-full bg-gradient-to-br from-brand-50 to-accent-50" />
+              <Image
+                src={asesorImg}
+                alt="Asesor de Credifácil con audífonos, listo para atender"
+                sizes="240px"
+                className="relative size-full object-contain"
+              />
+            </div>
             <h2 className="font-display text-2xl font-bold text-ink">Hablemos</h2>
             <p className="mt-3 text-ink-soft">
               Escríbenos por el canal que prefieras. Te respondemos rápido en horario de oficina.
